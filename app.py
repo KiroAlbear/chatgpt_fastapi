@@ -4,7 +4,7 @@ from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
 from Models.walletRechargeOrWithdrawModel import WalletRechargeOrWithdrawModel
 import databases
-from starlette.middleware.cors import CORSMiddleware
+
 
 
 DATABASE_URL = "sqlite:///./users.db"
@@ -17,13 +17,6 @@ userTableFunctions.createAndReturnUserTable()
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.on_event("startup")
 async def connect():
@@ -42,9 +35,7 @@ async def shutdown():
 #     allUsers = await usersDatabase.fetch_all(query)
 #     return allUsers
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+
 
 @app.post('/registerUser')
 async def addUser(r:RegisterModel):
