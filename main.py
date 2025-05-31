@@ -1,4 +1,4 @@
-from fastapi import  FastAPI
+from fastapi import FastAPI
 from DataBaseTables.userTable import UserTable
 from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
