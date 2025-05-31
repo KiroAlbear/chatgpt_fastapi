@@ -2,7 +2,6 @@ from fastapi import  FastAPI
 from DataBaseTables.userTable import UserTable
 from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
-from Models.walletRechargeOrWithdrawModel import WalletRechargeOrWithdrawModel
 import databases
 
 
@@ -41,9 +40,9 @@ async def shutdown():
 async def addUser(r:RegisterModel):
     return await userTableFunctions.insertNewUser(r)
 
-@app.post('/loginUser')
-async def loginUser(r:LoginModel):
-    return await userTableFunctions.loginUser(r)
+@app.post('/getUserCode')
+async def getUserCode(r:LoginModel):
+    return await userTableFunctions.requestCodeForUser(r)
 
 ## Provider APIS
 ######################################################################################

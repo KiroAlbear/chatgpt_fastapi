@@ -3,8 +3,8 @@ import databases
 import sqlalchemy
 from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
-from Models.walletRechargeOrWithdrawModel import WalletRechargeOrWithdrawModel
-
+from datetime import datetime
+import authenticator as authenticator
 
 
 
@@ -16,6 +16,7 @@ class UserTable():
     phoneNumber_ColumnName = "phoneNumber"
     daysRemaining_ColumnName = "daysRemaining"
     loginCounter_ColumnName = "loginCounter"
+    lastLoginDate_ColumnName = "lastLoginDate"
   
     __usersTable = 0
 
@@ -35,7 +36,9 @@ class UserTable():
         self.__metaData,
         sqlalchemy.Column(self.phoneNumber_ColumnName,sqlalchemy.String,primary_key = True),
         sqlalchemy.Column(self.daysRemaining_ColumnName,sqlalchemy.Integer),
-        sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer),)
+        sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer),
+        sqlalchemy.Column(self.lastLoginDate_ColumnName, sqlalchemy.String,))
+        
 
         return usersTable
 
@@ -60,12 +63,14 @@ class UserTable():
     #          status_code = 400,
     #          detail = "Wrong email or password"
     #         )
+    
 
     async def insertNewUser(self,userModel:RegisterModel):
         query = self.__usersTable.insert().values(
         phoneNumber = userModel.phoneNumber,
         loginCounter = 0,
         daysRemaining = 0,
+        lastLoginDate = None
     )
         ###################################################################################################
 
@@ -91,15 +96,62 @@ class UserTable():
         else:
            await self.__systemDatabase.execute(query)
            return await self.getUserData(userModel.phoneNumber)
-    
+        
 
+    
+    async def requestCodeForUser(self,user:LoginModel):
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            code = str(authenticator.add_new_secrets())
+        except Exception as e:
+            raise HTTPException(
+                status_code = 500,
+                detail = "Error generating code: {}".format(str(e))
+            )
+        
+        
+        
+        query = "UPDATE {} SET {} = {} +1 WHERE {} = {}".format(
+            self.tableName,
+
+            self.loginCounter_ColumnName,
+            self.loginCounter_ColumnName,
+
+            self.phoneNumber_ColumnName,
+            user.phoneNumber
+        )
+
+        updateDateQuery = "UPDATE {} SET {} = {} WHERE {} = {}".format(
+        self.tableName,
+
+        self.lastLoginDate_ColumnName,
+        " '{}'".format(current_datetime),
+
+        self.phoneNumber_ColumnName,
+        user.phoneNumber
+    )
+
+        try:
+            # await self.__systemDatabase.execute(query)
+            await self.__systemDatabase.execute(updateDateQuery)
+            return {
+                "code": code,
+            }
+        except Exception as e:
+            print("Error updating user data: {}".format(str(e)))
+            raise HTTPException(
+                status_code = 403,
+                detail = "User does not exist: {}".format(str(e))
+            )
+    
 
     async def getUserData(self, userId):
 
-        query = "SELECT {},{},{} FROM {} WHERE {}={}".format(
+        query = "SELECT {},{},{},{} FROM {} WHERE {}={}".format(
         self.phoneNumber_ColumnName,
         self.daysRemaining_ColumnName,
         self.loginCounter_ColumnName,
+        self.lastLoginDate_ColumnName,
 
         self.tableName,
 
@@ -111,5 +163,6 @@ class UserTable():
             self.phoneNumber_ColumnName:row[0],
             self.daysRemaining_ColumnName:row[1],
             self.loginCounter_ColumnName:row[2],
+            self.lastLoginDate_ColumnName:row[3]
         }
 
