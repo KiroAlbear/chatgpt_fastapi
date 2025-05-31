@@ -7,7 +7,6 @@ import databases
 
 
 
-
 DATABASE_URL = "sqlite:///./users.db"
 usersDatabase = databases.Database(DATABASE_URL)
 
@@ -16,14 +15,14 @@ userTableFunctions =  UserTable()
 userTableFunctions.createAndReturnUserTable()
 
 
-fastapi = FastAPI()
+app = FastAPI()
 
 
-@fastapi.on_event("startup")
+@app.on_event("startup")
 async def connect():
     await usersDatabase.connect()
 
-@fastapi.on_event("shutdown")
+@app.on_event("shutdown")
 async def shutdown():
     await usersDatabase.disconnect()
 
@@ -38,11 +37,11 @@ async def shutdown():
 
 
 
-@fastapi.post('/registerUser')
+@app.post('/registerUser')
 async def addUser(r:RegisterModel):
     return await userTableFunctions.insertNewUser(r)
 
-@fastapi.post('/loginUser')
+@app.post('/loginUser')
 async def loginUser(r:LoginModel):
     return await userTableFunctions.loginUser(r)
 
