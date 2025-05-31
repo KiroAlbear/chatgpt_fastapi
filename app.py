@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import  FastAPI
 from DataBaseTables.userTable import UserTable
 from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
@@ -16,14 +16,14 @@ userTableFunctions =  UserTable()
 userTableFunctions.createAndReturnUserTable()
 
 
-app = FastAPI()
+fastapi = FastAPI()
 
 
-@app.on_event("startup")
+@fastapi.on_event("startup")
 async def connect():
     await usersDatabase.connect()
 
-@app.on_event("shutdown")
+@fastapi.on_event("shutdown")
 async def shutdown():
     await usersDatabase.disconnect()
 
@@ -38,11 +38,11 @@ async def shutdown():
 
 
 
-@app.post('/registerUser')
+@fastapi.post('/registerUser')
 async def addUser(r:RegisterModel):
     return await userTableFunctions.insertNewUser(r)
 
-@app.post('/loginUser')
+@fastapi.post('/loginUser')
 async def loginUser(r:LoginModel):
     return await userTableFunctions.loginUser(r)
 
