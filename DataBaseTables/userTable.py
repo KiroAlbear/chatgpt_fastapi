@@ -100,7 +100,8 @@ class UserTable():
 
     
     async def requestCodeForUser(self,user:LoginModel):
-        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_datetime = datetime.now().strftime("%Y-%m-%d")
+        maxUserLoginCounterPerDay = 2
         try:
             code = str(authenticator.add_new_secrets())
         except Exception as e:
@@ -111,29 +112,32 @@ class UserTable():
         
         
         
-        query = "UPDATE {} SET {} = {} +1 WHERE {} = {}".format(
+        query = "UPDATE {} SET {} = {} +1, {} = {} WHERE {} = {}".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
             self.loginCounter_ColumnName,
 
+             self.lastLoginDate_ColumnName,
+            " '{}'".format(current_datetime),
+
             self.phoneNumber_ColumnName,
             user.phoneNumber
         )
-
-        updateDateQuery = "UPDATE {} SET {} = {} WHERE {} = {}".format(
-        self.tableName,
-
-        self.lastLoginDate_ColumnName,
-        " '{}'".format(current_datetime),
-
-        self.phoneNumber_ColumnName,
-        user.phoneNumber
-    )
+    
+       
+        userData = await self.getUserData(user.phoneNumber)
+        if userData[self.loginCounter_ColumnName] >= maxUserLoginCounterPerDay and userData[self.lastLoginDate_ColumnName] == current_datetime:
+            raise HTTPException(
+                status_code = 403,
+                detail = "You have exceeded the maximum login attempts for today"
+            )
+    
 
         try:
-            # await self.__systemDatabase.execute(query)
-            await self.__systemDatabase.execute(updateDateQuery)
+            await self.__systemDatabase.execute(query)
+            # check if the user has exceeded the login counter limit
+           
             return {
                 "code": code,
             }
