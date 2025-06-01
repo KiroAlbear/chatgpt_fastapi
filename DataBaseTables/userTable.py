@@ -5,6 +5,7 @@ from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
 from datetime import datetime, timedelta
 import authenticator as authenticator
+import utils.spreadsheet_utils as spreadsheet
 
 
 
@@ -37,7 +38,7 @@ class UserTable():
         self.tableName,
         self.__metaData,
         sqlalchemy.Column(self.phoneNumber_ColumnName,sqlalchemy.String,primary_key = True),
-        sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer),
+        sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.lastLoginDate_ColumnName, sqlalchemy.String, nullable=True),
         sqlalchemy.Column(self.firstLoginDate_ColumnName, sqlalchemy.String,nullable=True),
         sqlalchemy.Column(self.expiryDate_ColumnName, sqlalchemy.String,nullable=True )  # Optional expiry date
@@ -105,21 +106,20 @@ class UserTable():
 
     
     async def requestCodeForUser(self,user:LoginModel):
-        print("hereeee")
-
+    
         datetime_format = "%Y-%m-%d"
-        currentDate = datetime.now() + timedelta(days=11)
+        currentDate = datetime.now()
         currentDateString = currentDate.strftime(datetime_format)
 
         maxUserLoginCounterPerPeriod = 2 ########### Change this value to set the maximum number of login attempts per period of time
         resetAFterDays = 1 ########### Change this value to set the number of days after which the login counter resets
 
         resetAfterDateString = (currentDate + timedelta(days=resetAFterDays)).strftime(datetime_format)
-        print("hereeee1")
-
+        
+        code = None
         try:
             code = str(authenticator.add_new_secrets())
-            print("hereeee2")
+           
         except Exception as e:
             raise HTTPException(
                 status_code = 400,
@@ -128,7 +128,7 @@ class UserTable():
         
         
         
-        incrementUserLoginQuery = "UPDATE {} SET {} = {} +1, {} = {} WHERE {} = {}".format(
+        incrementUserLoginQuery = "UPDATE {} SET {} = {} +1, {} = {} WHERE {} = '{}'".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
@@ -141,24 +141,13 @@ class UserTable():
             user.phoneNumber
         )
 
-        # updateUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = '{}', {} = '{}' WHERE {} = {}".format(
-        #     self.tableName,
-
-        #     self.firstLoginDate_ColumnName,
-        #     "'{}'".format(current_datetime),
-
-        #     self.expiryDate_ColumnName,
-        #     "'{}'".format(resetAfter),
-        # )
-
         
-        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = 0, {} = {}, {} = {}, {} = {} WHERE {} = {}".format(
+        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = 1, {} = {}, {} = {}, {} = {} WHERE {} = '{}'".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
         
             
-
              self.lastLoginDate_ColumnName,
             "'{}'".format(currentDateString),
 
@@ -173,13 +162,14 @@ class UserTable():
         )
 
 
-    
-        userData = await self.getUserData(user.phoneNumber)
-        print("User has data: ", userData)
-        # If the user has never logged in before, set the first login date and expiry date
+        userData = await self._handleUserNotExist( user.phoneNumber)
+            
+        
+        
+        # If the user has never logged in, set the first login date and expiry date
         if (userData[self.lastLoginDate_ColumnName] == None or userData[self.firstLoginDate_ColumnName] == None or userData[self.expiryDate_ColumnName] == None):
             try:
-                print("User has never logged in before, setting first login date and expiry date")
+                print("User has never logged in, setting first login date and expiry date")
                 await self.__systemDatabase.execute(resetUserFirstAndExpiryDateQuery)
                 return {
                     "code": code
@@ -190,10 +180,10 @@ class UserTable():
                     detail = "Error resetting user dates: {}".format(str(e))
                 )
 
-        firstLoginDateString = userData[self.lastLoginDate_ColumnName]
+        # firstLoginDateString = userData[self.lastLoginDate_ColumnName]
         expiryDateString = userData[self.expiryDate_ColumnName]
 
-        firstLoginDate = datetime.strptime(firstLoginDateString, datetime_format)
+        # firstLoginDate = datetime.strptime(firstLoginDateString, datetime_format)
         expiryDate = datetime.strptime(expiryDateString, datetime_format)
 
 
@@ -204,7 +194,7 @@ class UserTable():
         if userData[self.loginCounter_ColumnName] >= maxUserLoginCounterPerPeriod and currentDate < expiryDate:
             raise HTTPException(
                 status_code = 400,
-                detail = "You have exceeded the maximum login attempts for today"
+                detail = "You have exceeded the maximum login attempts"
             )
         
         # If the user passed expiration period, reset the login counter and set the first login date and expiry date
@@ -212,6 +202,9 @@ class UserTable():
             try:
                 print("User passed expiration period, resetting login counter and setting first login date and expiry date")
                 await self.__systemDatabase.execute(resetUserFirstAndExpiryDateQuery)
+                return {
+                    "code": code
+                }
             except Exception as e:
                 raise HTTPException(
                     status_code = 400,
@@ -233,17 +226,38 @@ class UserTable():
                 detail = "User does not exist: {}".format(str(e))
             )
     
+    async def _handleUserNotExist(self, phoneNumber):
+       
 
+        userData = None
+
+        try:
+            userData = await self.getUserData(phoneNumber)
+        except Exception as e:
+            userSheetData = await spreadsheet.scrapeDataFromSpreadSheet()
+            userSheetItem = [item for item in userSheetData["data"]["availableUser"] if item[0] == phoneNumber]
+            print("sheet user:", userSheetItem)
+
+            if userSheetItem == []:
+                raise HTTPException(
+                    status_code = 400,
+                    detail = "This Phone Number is not found in the sheet"
+                )
+            elif userData == None:
+                try:
+                    print("User does not exist, inserting new user")
+                    userData = await self.insertNewUser(RegisterModel(phoneNumber = phoneNumber))
+                except Exception as e:
+                    raise HTTPException(
+                        status_code = 400,
+                        detail = "Error inserting new user: {}".format(str(e))
+                    )
+        return userData
+        
+                
     async def getUserData(self, userId):
 
-        query = "SELECT {},{},{},{},{} FROM {} WHERE {}={}".format(
-        self.phoneNumber_ColumnName,
-       
-        self.loginCounter_ColumnName,
-        self.lastLoginDate_ColumnName,
-        self.firstLoginDate_ColumnName,
-        self.expiryDate_ColumnName,
-
+        query = "SELECT * FROM {} WHERE {} = '{}'".format(
         self.tableName,
 
         self.phoneNumber_ColumnName,

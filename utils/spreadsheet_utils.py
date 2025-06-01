@@ -7,9 +7,7 @@ async def scrapeDataFromSpreadSheet():
     startingRow = 6 ########### Change this value to set the starting row of the data in the Google Spreadsheet
     
     phoneColumnZeroBased = 13 - 1 ########### Change this value to set the zero-based index of the phone column in the Google Spreadsheet
-    
-    endingRow = 28 + 1 ########### Change this value to set the ending row of the data in the Google Spreadsheet
-   
+
     daysColumnZeroBased = 12 - 1 ########### Change this value to set the zero-based index of the days column in the Google Spreadsheet
     
     daysColumnName = "Days"
@@ -25,19 +23,23 @@ async def scrapeDataFromSpreadSheet():
     columns = [td.text for td in salas_cine.find_all('th')]
     
     # return the rows of the first and second columns in the specified range
-    if startingRow < len(rows) and endingRow < len(rows):
-        phoneList = [rows[i][phoneColumnZeroBased].replace("\"","") for i in range(startingRow, endingRow)]
-        daysList = [rows[j][daysColumnZeroBased] for j in range(startingRow, endingRow)]
-        # remove negative values from the days list and remove the corresponding phone numbers
-        filteredData = [(phone, days) for phone, days in zip(phoneList, daysList) if days.isdigit() and int(days) >= 0]
+    # if startingRow < len(rows) and endingRow < len(rows):
+    phoneList = [rows[i][phoneColumnZeroBased].replace("\"","") for i in range(startingRow, len(rows)-1)]
+    daysList = [rows[j][daysColumnZeroBased] for j in range(startingRow, len(rows) -1 )]
 
-        return {
-            "data":
-              { 
-                 "availableUser": filteredData
-            }
-            }
+    print("Phone Length:", len(phoneList))
+    print("Phone List:", phoneList)
+    # remove negative values from the days list and remove the corresponding phone numbers
+    filteredData = [(phone, days) for phone, days in zip(phoneList, daysList) if days.isdigit() and int(days) >= 0]
+
     
-    else:
-        return None  # Handle case where the specified range is out of bounds
+
+    return {
+        "data":
+            { 
+                "availableUser": filteredData
+            }
+        }
+    
+    
     
