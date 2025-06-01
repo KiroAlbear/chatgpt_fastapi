@@ -3,7 +3,7 @@ import databases
 import sqlalchemy
 from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
-from datetime import datetime
+from datetime import datetime, timedelta
 import authenticator as authenticator
 
 
@@ -14,9 +14,11 @@ class UserTable():
     __metaData = sqlalchemy.MetaData()
     tableName = "users"
     phoneNumber_ColumnName = "phoneNumber"
-    daysRemaining_ColumnName = "daysRemaining"
+    
     loginCounter_ColumnName = "loginCounter"
     lastLoginDate_ColumnName = "lastLoginDate"
+    firstLoginDate_ColumnName = "firstLoginDate"
+    expiryDate_ColumnName = "expiryDate"
   
     __usersTable = 0
 
@@ -35,9 +37,11 @@ class UserTable():
         self.tableName,
         self.__metaData,
         sqlalchemy.Column(self.phoneNumber_ColumnName,sqlalchemy.String,primary_key = True),
-        sqlalchemy.Column(self.daysRemaining_ColumnName,sqlalchemy.Integer),
         sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer),
-        sqlalchemy.Column(self.lastLoginDate_ColumnName, sqlalchemy.String,))
+        sqlalchemy.Column(self.lastLoginDate_ColumnName, sqlalchemy.String, nullable=True),
+        sqlalchemy.Column(self.firstLoginDate_ColumnName, sqlalchemy.String,nullable=True),
+        sqlalchemy.Column(self.expiryDate_ColumnName, sqlalchemy.String,nullable=True )  # Optional expiry date
+        )
         
 
         return usersTable
@@ -69,8 +73,9 @@ class UserTable():
         query = self.__usersTable.insert().values(
         phoneNumber = userModel.phoneNumber,
         loginCounter = 0,
-        daysRemaining = 0,
-        lastLoginDate = None
+        lastLoginDate = None,
+        firstLoginDate = None,
+        expiryDate = None
     )
         ###################################################################################################
 
@@ -100,62 +105,144 @@ class UserTable():
 
     
     async def requestCodeForUser(self,user:LoginModel):
-        current_datetime = datetime.now().strftime("%Y-%m-%d")
-        maxUserLoginCounterPerDay = 2
+        print("hereeee")
+
+        datetime_format = "%Y-%m-%d"
+        currentDate = datetime.now() + timedelta(days=6)
+        currentDateString = currentDate.strftime(datetime_format)
+
+        maxUserLoginCounterPerPeriod = 2 ########### Change this value to set the maximum number of login attempts per period of time
+        resetAFterDays = 1 ########### Change this value to set the number of days after which the login counter resets
+
+        resetAfterDateString = (currentDate + timedelta(days=resetAFterDays)).strftime(datetime_format)
+        print("hereeee1")
+
         try:
             code = str(authenticator.add_new_secrets())
+            print("hereeee2")
         except Exception as e:
             raise HTTPException(
-                status_code = 500,
+                status_code = 400,
                 detail = "Error generating code: {}".format(str(e))
             )
         
         
         
-        query = "UPDATE {} SET {} = {} +1, {} = {} WHERE {} = {}".format(
+        incrementUserLoginQuery = "UPDATE {} SET {} = {} +1, {} = {} WHERE {} = {}".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
             self.loginCounter_ColumnName,
 
              self.lastLoginDate_ColumnName,
-            " '{}'".format(current_datetime),
+            "'{}'".format(currentDateString),
 
             self.phoneNumber_ColumnName,
             user.phoneNumber
         )
+
+        # updateUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = '{}', {} = '{}' WHERE {} = {}".format(
+        #     self.tableName,
+
+        #     self.firstLoginDate_ColumnName,
+        #     "'{}'".format(current_datetime),
+
+        #     self.expiryDate_ColumnName,
+        #     "'{}'".format(resetAfter),
+        # )
+
+        
+        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} - 2, {} = {}, {} = {}, {} = {} WHERE {} = {}".format(
+            self.tableName,
+
+            self.loginCounter_ColumnName,
+        
+          
+
+             self.lastLoginDate_ColumnName,
+            "'{}'".format(currentDateString),
+
+            self.expiryDate_ColumnName,
+            "'{}'".format(resetAfterDateString),
+
+            self.firstLoginDate_ColumnName,
+            "'{}'".format(currentDateString),
+
+            self.phoneNumber_ColumnName,
+            user.phoneNumber
+        )
+
+
     
-       
         userData = await self.getUserData(user.phoneNumber)
-        if userData[self.loginCounter_ColumnName] >= maxUserLoginCounterPerDay and userData[self.lastLoginDate_ColumnName] == current_datetime:
+        print("User has data: ", userData)
+        # If the user has never logged in before, set the first login date and expiry date
+        if (userData[self.lastLoginDate_ColumnName] == None or userData[self.firstLoginDate_ColumnName] == None or userData[self.expiryDate_ColumnName] == None):
+            try:
+                print("User has never logged in before, setting first login date and expiry date")
+                await self.__systemDatabase.execute(resetUserFirstAndExpiryDateQuery)
+                return {
+                    "code": code
+                }
+            except Exception as e:
+                raise HTTPException(
+                    status_code = 400,
+                    detail = "Error resetting user dates: {}".format(str(e))
+                )
+
+        firstLoginDateString = userData[self.lastLoginDate_ColumnName]
+        expiryDateString = userData[self.expiryDate_ColumnName]
+
+        firstLoginDate = datetime.strptime(firstLoginDateString, datetime_format)
+        expiryDate = datetime.strptime(expiryDateString, datetime_format)
+
+
+        
+            
+        
+        # if user has exceeded the maximum login per time period, raise an error
+        if userData[self.loginCounter_ColumnName] >= maxUserLoginCounterPerPeriod and currentDate < expiryDate:
             raise HTTPException(
-                status_code = 403,
+                status_code = 400,
                 detail = "You have exceeded the maximum login attempts for today"
             )
+        
+        # If the user passed expiration period, reset the login counter and set the first login date and expiry date
+        if currentDate >= expiryDate:
+            try:
+                print("User passed expiration period, resetting login counter and setting first login date and expiry date")
+                await self.__systemDatabase.execute(resetUserFirstAndExpiryDateQuery)
+            except Exception as e:
+                raise HTTPException(
+                    status_code = 400,
+                    detail = "Error resetting user dates: {}".format(str(e))
+                )
     
 
         try:
-            await self.__systemDatabase.execute(query)
+            await self.__systemDatabase.execute(incrementUserLoginQuery)
             # check if the user has exceeded the login counter limit
            
             return {
-                "code": code,
+                "code": code
             }
         except Exception as e:
-            print("Error updating user data: {}".format(str(e)))
+           
             raise HTTPException(
-                status_code = 403,
+                status_code = 400,
                 detail = "User does not exist: {}".format(str(e))
             )
     
 
     async def getUserData(self, userId):
 
-        query = "SELECT {},{},{},{} FROM {} WHERE {}={}".format(
+        query = "SELECT {},{},{},{},{} FROM {} WHERE {}={}".format(
         self.phoneNumber_ColumnName,
-        self.daysRemaining_ColumnName,
+       
         self.loginCounter_ColumnName,
         self.lastLoginDate_ColumnName,
+        self.firstLoginDate_ColumnName,
+        self.expiryDate_ColumnName,
 
         self.tableName,
 
@@ -165,8 +252,9 @@ class UserTable():
         row = await self.__systemDatabase.fetch_one(query)
         return {
             self.phoneNumber_ColumnName:row[0],
-            self.daysRemaining_ColumnName:row[1],
-            self.loginCounter_ColumnName:row[2],
-            self.lastLoginDate_ColumnName:row[3]
+            self.loginCounter_ColumnName:row[1],
+            self.lastLoginDate_ColumnName:row[2],
+            self.firstLoginDate_ColumnName:row[3],
+            self.expiryDate_ColumnName:row[4]
         }
 

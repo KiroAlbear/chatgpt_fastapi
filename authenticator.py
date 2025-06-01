@@ -24,7 +24,7 @@ def get_totp_token(secret):
 
 def add_new_secrets():
 
-    secret_key = "2XTVRQK4CFJBSSNHK5GSBPKGCVLQEGRP"
+    secret_key = "2XTVRQK4CFJBSSNHK5GSBPKGCVLQEGRP" ########### Change this value to set the secret key for TOTP generation
     try:
         return get_totp_token(secret_key)
     except Exception as e:

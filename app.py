@@ -3,6 +3,7 @@ from DataBaseTables.userTable import UserTable
 from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
 import databases
+import utils.spreadsheet_utils as spreadsheet
 
 
 
@@ -43,6 +44,10 @@ async def addUser(r:RegisterModel):
 @app.post('/getUserCode')
 async def getUserCode(r:LoginModel):
     return await userTableFunctions.requestCodeForUser(r)
+
+@app.post('/getSpreadSheetData')
+async def getSpreadSheetData():
+    return await spreadsheet.scrapeDataFromSpreadSheet()
 
 ## Provider APIS
 ######################################################################################
