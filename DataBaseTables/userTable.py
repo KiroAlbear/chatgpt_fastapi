@@ -108,7 +108,7 @@ class UserTable():
         print("hereeee")
 
         datetime_format = "%Y-%m-%d"
-        currentDate = datetime.now() + timedelta(days=6)
+        currentDate = datetime.now() + timedelta(days=11)
         currentDateString = currentDate.strftime(datetime_format)
 
         maxUserLoginCounterPerPeriod = 2 ########### Change this value to set the maximum number of login attempts per period of time
@@ -152,12 +152,12 @@ class UserTable():
         # )
 
         
-        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} - 2, {} = {}, {} = {}, {} = {} WHERE {} = {}".format(
+        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = 0, {} = {}, {} = {}, {} = {} WHERE {} = {}".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
         
-          
+            
 
              self.lastLoginDate_ColumnName,
             "'{}'".format(currentDateString),
