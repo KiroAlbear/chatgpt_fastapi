@@ -6,7 +6,7 @@ async def scrapeDataFromSpreadSheet():
     
     startingRow = 6 ########### Change this value to set the starting row of the data in the Google Spreadsheet
     
-    phoneColumnZeroBased = 13 - 1 ########### Change this value to set the zero-based index of the phone column in the Google Spreadsheet
+    usersCodeColumnZeroBased = 16 - 1 ########### Change this value to set the zero-based index of the phone column in the Google Spreadsheet
 
     daysColumnZeroBased = 12 - 1 ########### Change this value to set the zero-based index of the days column in the Google Spreadsheet
     
@@ -24,7 +24,7 @@ async def scrapeDataFromSpreadSheet():
     
     # return the rows of the first and second columns in the specified range
     # if startingRow < len(rows) and endingRow < len(rows):
-    phoneList = [rows[i][phoneColumnZeroBased].replace("\"","") for i in range(startingRow, len(rows)-1)]
+    phoneList = [rows[i][usersCodeColumnZeroBased].replace("\"","") for i in range(startingRow, len(rows)-1)]
     daysList = [rows[j][daysColumnZeroBased] for j in range(startingRow, len(rows) -1 )]
 
     print("Phone Length:", len(phoneList))

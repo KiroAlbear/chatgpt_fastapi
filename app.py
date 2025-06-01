@@ -1,18 +1,22 @@
 from fastapi import  FastAPI
 from DataBaseTables.userTable import UserTable
+from DataBaseTables.adminTable import AdminTable
 from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
+from Models.registerAdminModel import RegisterAdminModel
 import databases
 import utils.spreadsheet_utils as spreadsheet
 
 
 
-DATABASE_URL = "sqlite:///./users.db"
-usersDatabase = databases.Database(DATABASE_URL)
+USERS_DATABASE_URL = "sqlite:///./users.db"
+usersDatabase = databases.Database(USERS_DATABASE_URL)
 
 userTableFunctions =  UserTable()
-
 userTableFunctions.createAndReturnUserTable()
+
+adminTableFunctions = AdminTable()
+adminTableFunctions.createAndReturnAdminTable()
 
 
 app = FastAPI()
@@ -35,7 +39,13 @@ async def shutdown():
 #     allUsers = await usersDatabase.fetch_all(query)
 #     return allUsers
 
+@app.post('/registerAdmin')
+async def addAdmin(r:RegisterAdminModel):
+    return await adminTableFunctions.insertNewAdmin(r)
 
+@app.get('/generateCode')
+async def generateCode():
+    return  adminTableFunctions.generateCode()
 
 @app.post('/registerUser')
 async def addUser(r:RegisterModel):

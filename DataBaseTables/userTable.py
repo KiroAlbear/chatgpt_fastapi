@@ -14,8 +14,9 @@ class UserTable():
     __systemDatabase = databases.Database(__DATABASE_URL)
     __metaData = sqlalchemy.MetaData()
     tableName = "users"
-    phoneNumber_ColumnName = "phoneNumber"
-    
+    email_ColumnName = "email"
+    password_ColumnName = "password"
+    lastLoginCode_ColumnName = "lastLoginCode"
     loginCounter_ColumnName = "loginCounter"
     lastLoginDate_ColumnName = "lastLoginDate"
     firstLoginDate_ColumnName = "firstLoginDate"
@@ -37,9 +38,11 @@ class UserTable():
         usersTable = sqlalchemy.Table(
         self.tableName,
         self.__metaData,
-        sqlalchemy.Column(self.phoneNumber_ColumnName,sqlalchemy.String,primary_key = True),
-        sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
+        sqlalchemy.Column(self.email_ColumnName,sqlalchemy.String,primary_key=True),
+        sqlalchemy.Column(self.password_ColumnName,sqlalchemy.String,nullable=True),
         sqlalchemy.Column(self.lastLoginDate_ColumnName, sqlalchemy.String, nullable=True),
+        sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
+        sqlalchemy.Column(self.lastLoginCode_ColumnName, sqlalchemy.String, nullable=True),
         sqlalchemy.Column(self.firstLoginDate_ColumnName, sqlalchemy.String,nullable=True),
         sqlalchemy.Column(self.expiryDate_ColumnName, sqlalchemy.String,nullable=True )  # Optional expiry date
         )
@@ -83,7 +86,7 @@ class UserTable():
         phone_verification_query = "SELECT * FROM {} WHERE {}= '{}'".format(
            self.tableName,
 
-           self.phoneNumber_ColumnName,
+           self.email_ColumnName,
            userModel.phoneNumber,
         )
         phone_verification_record = await self.__systemDatabase.fetch_all(phone_verification_query)
@@ -106,7 +109,7 @@ class UserTable():
 
     
     async def requestCodeForUser(self,user:LoginModel):
-    
+        
         datetime_format = "%Y-%m-%d"
         currentDate = datetime.now()
         currentDateString = currentDate.strftime(datetime_format)
@@ -128,7 +131,7 @@ class UserTable():
         
         
         
-        incrementUserLoginQuery = "UPDATE {} SET {} = {} +1, {} = {} WHERE {} = '{}'".format(
+        incrementUserLoginQuery = "UPDATE {} SET {} = {} +1, {} = {}, {} = {} WHERE {} = '{}'".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
@@ -137,12 +140,15 @@ class UserTable():
              self.lastLoginDate_ColumnName,
             "'{}'".format(currentDateString),
 
-            self.phoneNumber_ColumnName,
-            user.phoneNumber
+            self.lastLoginCode_ColumnName,
+            "'{}'".format(code),
+
+            self.email_ColumnName,
+            user.email
         )
 
         
-        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = 1, {} = {}, {} = {}, {} = {} WHERE {} = '{}'".format(
+        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = 1, {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}'".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
@@ -157,12 +163,15 @@ class UserTable():
             self.firstLoginDate_ColumnName,
             "'{}'".format(currentDateString),
 
-            self.phoneNumber_ColumnName,
-            user.phoneNumber
+            self.lastLoginCode_ColumnName,
+            "'{}'".format(code),
+
+            self.email_ColumnName,
+            user.email
         )
 
 
-        userData = await self._handleUserNotExist( user.phoneNumber)
+        userData = await self._handleUserNotExist( user.email)
             
         
         
@@ -185,9 +194,6 @@ class UserTable():
 
         # firstLoginDate = datetime.strptime(firstLoginDateString, datetime_format)
         expiryDate = datetime.strptime(expiryDateString, datetime_format)
-
-
-        
             
         
         # if user has exceeded the maximum login per time period, raise an error
@@ -213,6 +219,7 @@ class UserTable():
     
 
         try:
+
             await self.__systemDatabase.execute(incrementUserLoginQuery)
             # check if the user has exceeded the login counter limit
            
@@ -260,15 +267,16 @@ class UserTable():
         query = "SELECT * FROM {} WHERE {} = '{}'".format(
         self.tableName,
 
-        self.phoneNumber_ColumnName,
+        self.email_ColumnName,
         
         userId)
         row = await self.__systemDatabase.fetch_one(query)
         return {
-            self.phoneNumber_ColumnName:row[0],
-            self.loginCounter_ColumnName:row[1],
-            self.lastLoginDate_ColumnName:row[2],
-            self.firstLoginDate_ColumnName:row[3],
-            self.expiryDate_ColumnName:row[4]
+            self.email_ColumnName:row[0],
+            self.lastLoginCode_ColumnName:row[1],
+            self.loginCounter_ColumnName:row[2],
+            self.lastLoginDate_ColumnName:row[3],
+            self.firstLoginDate_ColumnName:row[4],
+            self.expiryDate_ColumnName:row[5]
         }
 
