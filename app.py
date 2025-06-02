@@ -5,6 +5,8 @@ from Models.User.loginModel import LoginModel
 from Models.User.registerModel import RegisterModel
 from Models.User.enableDisableModel import EnableModel
 from Models.User.getAdminUsersModel import GetAdminUsersModel
+from Models.User.resetAllAdminUsersCodesModel import ResetAllAdminUsersCodesModel
+
 from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.updateAdminModel import UpdateAdminModel
 from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
@@ -74,6 +76,10 @@ async def requestUserCode(r:LoginModel):
 @app.post('/enableUser')
 async def enableUser(r:EnableModel):
     return await userTableFunctions.enableUser(r)
+
+@app.post('/enableAllAdminUsers')
+async def enableAllAdminUsers(r:ResetAllAdminUsersCodesModel):
+    return await userTableFunctions.enableAllAdminUsers(r)
 
 # @app.post('/getSpreadSheetData')
 # async def getSpreadSheetData():

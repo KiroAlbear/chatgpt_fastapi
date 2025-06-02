@@ -4,6 +4,9 @@ import sqlalchemy
 from Models.User.loginModel import LoginModel
 from Models.User.registerModel import RegisterModel
 from Models.User.enableDisableModel import EnableModel
+from Models.User.resetAllAdminUsersCodesModel import ResetAllAdminUsersCodesModel
+from Models.User.getAdminUsersModel import GetAdminUsersModel
+
 from Models.generic_response import GenericResponse
 from DataBaseTables.adminTable import AdminTable
 from datetime import datetime, timedelta
@@ -97,7 +100,28 @@ class UserTable():
            return await self.getUserData(userCode=userModel.userCode,email=userModel.email)
         
 
-    
+    async def enableAllAdminUsers(self,model:ResetAllAdminUsersCodesModel):
+        query = "UPDATE {} SET {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}'".format(
+                    self.tableName,
+
+                    self.loginCounter_ColumnName,
+                    0,
+
+                    self.lastLoginDate_ColumnName,
+                    'NULL',
+
+                    self.firstLoginDate_ColumnName,
+                    'NULL',
+
+                    self.expiryDate_ColumnName,
+                    'NULL',
+
+                    self.email_ColumnName,
+                    model.email
+                )
+        await self.__systemDatabase.execute(query)
+        return await AdminTable().getAllAdminUsers(model=GetAdminUsersModel(email=model.email))
+
     async def enableUser(self,model:EnableModel):
         # set expiryDate, firstLoginDate, lastLoginDate to None
         query = "UPDATE {} SET {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(

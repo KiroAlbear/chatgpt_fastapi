@@ -222,6 +222,9 @@ class AdminTable():
         return GenericResponse({"systemCode":adminCode}).to_dict()
         
         
+    
+
+
     async def getAllAdminUsers(self,model:GetAdminUsersModel):
         admin_record = await userTable.UserTable().checkAndReturnAdmin(email=model.email)
 
