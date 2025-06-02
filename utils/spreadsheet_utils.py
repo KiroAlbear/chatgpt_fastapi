@@ -2,19 +2,17 @@ import typing
 import requests
 from bs4 import BeautifulSoup
 
-async def scrapeDataFromSpreadSheet():
+async def scrapeDataFromSpreadSheet(startingRowParam: int , usersCodeColumnZeroBasedParam: int, daysColumnZeroBasedParam:int, sheetUrlParam:str):
     
-    startingRow = 6 ########### Change this value to set the starting row of the data in the Google Spreadsheet
+    startingRow = startingRowParam ########### Change this value to set the starting row of the data in the Google Spreadsheet
     
-    usersCodeColumnZeroBased = 16 - 1 ########### Change this value to set the zero-based index of the phone column in the Google Spreadsheet
+    usersCodeColumnZeroBased = usersCodeColumnZeroBasedParam - 1 ########### Change this value to set the zero-based index of the phone column in the Google Spreadsheet
 
-    daysColumnZeroBased = 12 - 1 ########### Change this value to set the zero-based index of the days column in the Google Spreadsheet
+    daysColumnZeroBased = daysColumnZeroBasedParam - 1 ########### Change this value to set the zero-based index of the days column in the Google Spreadsheet
     
-    daysColumnName = "Days"
-    phoneColumnName = "Phone"
 
     ########### Change this value to set the URL of the Google Spreadsheet
-    html = requests.get('https://docs.google.com/spreadsheets/d/1acFuo3GuvEftzk13J8oKhsAIMg6DVHl1/edit?usp=sharing&ouid=116524698235408728905&rtpof=true&sd=true') 
+    html = requests.get(sheetUrlParam) 
     
     html = html.text
     soup = BeautifulSoup(html, 'lxml')

@@ -106,7 +106,7 @@ class AdminTable():
         
         else:
            await self.__systemDatabase.execute(query)
-           return await self.getAdminData(adminModel.adminUserName,adminModel.adminPassword)
+           return await self.getAdminData(adminModel.adminUserName)
         
     async def updateAdmin(self,adminModel:UpdateAdminModel):
 
@@ -157,7 +157,7 @@ class AdminTable():
             adminModel.adminPassword
         )
         await self.__systemDatabase.execute(query)
-        return await self.getAdminData(adminModel.adminUserName,adminModel.adminPassword)
+        return await self.getAdminData(adminModel.adminUserName)
 
         
     
@@ -172,16 +172,15 @@ class AdminTable():
     
         
     
-    async def getAdminData(self, userName,password):
+    async def getAdminData(self, userName):
 
-        query = "SELECT * FROM {} WHERE {} = '{}' and {} = '{}'".format(
+        query = "SELECT * FROM {} WHERE {} = '{}' ".format(
         self.tableName,
 
         self.adminUserName_ColumnName,
         userName,
         
-        self.adminPassword_ColumnName,
-        password
+
         
         )
         row = await self.__systemDatabase.fetch_one(query)
