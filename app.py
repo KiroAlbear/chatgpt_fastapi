@@ -4,6 +4,7 @@ from DataBaseTables.adminTable import AdminTable
 from Models.User.loginModel import LoginModel
 from Models.User.registerModel import RegisterModel
 from Models.User.enableDisableModel import EnableModel
+from Models.User.getAdminUsersModel import GetAdminUsersModel
 from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.updateAdminModel import UpdateAdminModel
 from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
@@ -58,13 +59,13 @@ async def enableDisableAdmin(r:EnableDisableAdminModel):
 async def generateCode():
     return  adminTableFunctions.generateCode()
 
-@app.get('/getAllAdminUsers')
-async def getAllAdminUsers(email:str):
-    return await adminTableFunctions.getAllAdminUsers(email=email)
+@app.post('/getAllAdminUsers')
+async def getAllAdminUsers(r:GetAdminUsersModel):
+    return await adminTableFunctions.getAllAdminUsers(r)
 
-@app.post('/registerUser')
-async def addUser(r:RegisterModel):
-    return await userTableFunctions.insertNewUser(r)
+# @app.post('/registerUser')
+# async def addUser(r:RegisterModel):
+#     return await userTableFunctions.insertNewUser(r)
 
 @app.post('/requestUserCode')
 async def requestUserCode(r:LoginModel):
@@ -74,9 +75,9 @@ async def requestUserCode(r:LoginModel):
 async def enableUser(r:EnableModel):
     return await userTableFunctions.enableUser(r)
 
-@app.post('/getSpreadSheetData')
-async def getSpreadSheetData():
-    return await spreadsheet.scrapeDataFromSpreadSheet()
+# @app.post('/getSpreadSheetData')
+# async def getSpreadSheetData():
+#     return await spreadsheet.scrapeDataFromSpreadSheet()
 
 ## Provider APIS
 ######################################################################################

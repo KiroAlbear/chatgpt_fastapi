@@ -9,6 +9,8 @@ from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
 from Models.generic_response import GenericResponse
 from Models.User.userModel import UserModel
 import DataBaseTables.userTable as userTable
+from Models.User.getAdminUsersModel import GetAdminUsersModel
+
 
 from datetime import datetime, timedelta
 import authenticator as authenticator
@@ -220,8 +222,8 @@ class AdminTable():
         return GenericResponse({"systemCode":adminCode}).to_dict()
         
         
-    async def getAllAdminUsers(self,email:str):
-        admin_record = await userTable.UserTable().checkAndReturnAdmin(email=email)
+    async def getAllAdminUsers(self,model:GetAdminUsersModel):
+        admin_record = await userTable.UserTable().checkAndReturnAdmin(email=model.email)
 
         
 
@@ -243,7 +245,7 @@ class AdminTable():
                 detail = "No Active users found in the sheet"
             )
         
-        userData = await userTable.UserTable().getAllUsersForAdmin(email=email)
+        userData = await userTable.UserTable().getAllUsersForAdmin(email=model.email)
 
         usersList = []
         for sheetUser in sheetUserData:
