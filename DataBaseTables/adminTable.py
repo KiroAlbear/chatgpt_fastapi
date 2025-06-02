@@ -7,6 +7,7 @@ from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.updateAdminModel import UpdateAdminModel
 from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
 from Models.generic_response import GenericResponse
+from DataBaseTables.userTable import UserTable
 from datetime import datetime, timedelta
 import authenticator as authenticator
 import utils.spreadsheet_utils as spreadsheet
@@ -208,7 +209,28 @@ class AdminTable():
         return GenericResponse({"systemCode":adminCode}).to_dict()
         
         
-    
+    async def getAllAdminUsers(self,email:str):
+        admin_record = self.checkAndReturnAdmin(email)
+
+        
+
+        sheetStartingRowNumber = admin_record[self.sheetStartingRowNumber_ColumnName]
+        sheetUsersCodesColumnNumber = admin_record[self.sheetUsersCodesColumnNumber_ColumnName] 
+        sheetDaysLeft = admin_record[self.sheetDaysLeftColumnNumber_ColumnName] 
+        sheetUrl = admin_record[self.sheetUrl_ColumnName]
+
+        sheetUserData =  await spreadsheet.scrapeDataFromSpreadSheet(startingRowParam=sheetStartingRowNumber,
+                                                            usersCodeColumnZeroBasedParam=sheetUsersCodesColumnNumber,
+                                                            daysColumnZeroBasedParam = sheetDaysLeft,
+                                                            sheetUrlParam=sheetUrl)
+        userData = await UserTable().getAllUsersForAdmin(email=email)
+        
+        if sheetUserData["data"]["availableUser"] == []:
+            raise HTTPException(
+                status_code = 400,
+                detail = "No Active users found in the sheet"
+            )
+        
         
     
     async def getAdminData(self, userName,withGenericResponse=False):

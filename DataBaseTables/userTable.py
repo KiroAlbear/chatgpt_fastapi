@@ -88,7 +88,7 @@ class UserTable():
         
         else:
            await self.__systemDatabase.execute(query)
-           return await self.getUserData(userModel.userCode)
+           return await self.getUserData(userCode=userModel.userCode,email=userModel.email)
         
 
     
@@ -116,17 +116,35 @@ class UserTable():
             model.email
         )
         await self.__systemDatabase.execute(query)
-        return await self.getUserData(model.userCode,True)
+        return await self.getUserData(userCode=model.userCode,email=model.email, WithGenericResponse=True)
         
 
-    async def requestCodeForUser(self,user:LoginModel):
-        admin_record = await AdminTable().getAdminData(user.email)
+    async def checkAndReturnAdmin(self,email):
+        admin_record = None
+        try:
+            admin_record = await AdminTable().getAdminData(email)
+        except Exception:
+             raise HTTPException(
+                status_code = 400,
+                detail = "Admin not found"
+            )
 
         if not admin_record:
             raise HTTPException(
                 status_code = 400,
                 detail = "Admin not found"
             )
+        
+        return admin_record
+        
+
+
+
+        
+
+    async def requestCodeForUser(self,user:LoginModel):
+        admin_record = self.checkAndReturnAdmin(user.email)
+
 
         sheetStartingRowNumber = admin_record[AdminTable.sheetStartingRowNumber_ColumnName]
         sheetUsersCodesColumnNumber = admin_record[AdminTable.sheetUsersCodesColumnNumber_ColumnName] 
@@ -266,7 +284,7 @@ class UserTable():
         userData = None
 
         try:
-            userData = await self.getUserData(userCode)
+            userData = await self.getUserData(userCode=userCode,email=email)
         except Exception as e:
             userSheetData = await spreadsheet.scrapeDataFromSpreadSheet(startingRowParam=startingRowParam,
                                                                         usersCodeColumnZeroBasedParam=usersCodeColumnZeroBasedParam,
@@ -291,15 +309,40 @@ class UserTable():
                     )
         return userData
         
-                
-    async def getUserData(self, userCode, WithGenericResponse = False):
+    
+    async def getAllUsersForAdmin(self, email:str):
+        await self.checkAndReturnAdmin(email)
 
+        
         query = "SELECT * FROM {} WHERE {} = '{}'".format(
+            self.tableName,
+            
+            self.email_ColumnName,
+            email
+        
+        )
+        allUsers = await self.__systemDatabase.fetch_all(query)
+        
+        return [{
+            self.email_ColumnName:row[self.email_ColumnName],
+            self.userCode_ColumnName:row[self.userCode_ColumnName],
+            self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
+            self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
+            self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
+            self.expiryDate_ColumnName:row[self.expiryDate_ColumnName]
+        } for row in allUsers]
+                
+    async def getUserData(self, userCode:str, email:str, WithGenericResponse = False):
+
+        query = "SELECT * FROM {} WHERE {} = '{}' and {} = '{}'".format(
         self.tableName,
 
         self.userCode_ColumnName,
+        userCode,
         
-        userCode)
+        self.email_ColumnName,
+        email
+        )
         row = await self.__systemDatabase.fetch_one(query)
         if WithGenericResponse:
             return GenericResponse({
