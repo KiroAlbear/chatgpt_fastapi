@@ -18,6 +18,7 @@ class UserTable():
     __metaData = sqlalchemy.MetaData()
     tableName = "users"
     email_ColumnName = "email"
+    phone_ColumnName = "phone"
     userCode_ColumnName = "userCode"
     loginCounter_ColumnName = "loginCounter"
     lastLoginCode_ColumnName = "lastLoginCode"
@@ -44,6 +45,7 @@ class UserTable():
         self.__metaData,
         sqlalchemy.Column(self.userCode_ColumnName,sqlalchemy.String,primary_key=True),
         sqlalchemy.Column(self.email_ColumnName,sqlalchemy.String,nullable=True),
+        sqlalchemy.Column(self.phone_ColumnName,sqlalchemy.String,nullable=True),
         sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
 
         sqlalchemy.Column(self.lastLoginDate_ColumnName, sqlalchemy.String, nullable=True),
@@ -60,6 +62,7 @@ class UserTable():
         query = self.__usersTable.insert().values(
         email = userModel.email,
         userCode = userModel.userCode,
+        phone = userModel.phone,
         loginCounter = 0,
         lastLoginDate = None,
         firstLoginDate = None,
@@ -67,22 +70,25 @@ class UserTable():
     )
         ###################################################################################################
 
-        phone_verification_query = "SELECT * FROM {} WHERE {}= '{}'".format(
+        user_verification_query = "SELECT * FROM {} WHERE {} = '{}' and {} = '{}'".format(
            self.tableName,
 
-           self.email_ColumnName,
+           self.userCode_ColumnName,
            userModel.userCode,
+
+           self.email_ColumnName,
+           userModel.email
         )
-        phone_verification_record = await self.__systemDatabase.fetch_all(phone_verification_query)
+        user_verification_record = await self.__systemDatabase.fetch_all(user_verification_query)
 
         ###################################################################################################
 
         
      
-        if(len(phone_verification_record) > 0):
+        if(len(user_verification_record) > 0):
             raise HTTPException(
              status_code = 400,
-             detail = "This Phone Number already exists"
+             detail = "This User already exists"
             )
 
         
@@ -143,7 +149,7 @@ class UserTable():
         
 
     async def requestCodeForUser(self,user:LoginModel):
-        admin_record = self.checkAndReturnAdmin(user.email)
+        admin_record = await self.checkAndReturnAdmin(user.email)
 
 
         sheetStartingRowNumber = admin_record[AdminTable.sheetStartingRowNumber_ColumnName]
@@ -151,6 +157,8 @@ class UserTable():
         sheetDaysLeft = admin_record[AdminTable.sheetDaysLeftColumnNumber_ColumnName] 
         maxLoginPerPeriodParam = admin_record[AdminTable.maxLoginPerPeriod_ColumnName] 
         resetAFterDaysParam = admin_record[AdminTable.resetAFterDays_ColumnName] 
+        phoneColumnNumber = admin_record[AdminTable.sheetPhoneColumnNumber_ColumnName]
+        
 
         sheetUrl = admin_record[AdminTable.sheetUrl_ColumnName]
         secretKey = admin_record[AdminTable.secretKey_ColumnName]
@@ -178,7 +186,7 @@ class UserTable():
         
         
         
-        incrementUserLoginQuery = "UPDATE {} SET {} = {} +1, {} = {}, {} = {} WHERE {} = '{}'".format(
+        incrementUserLoginQuery = "UPDATE {} SET {} = {} +1, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
@@ -190,12 +198,15 @@ class UserTable():
             self.lastLoginCode_ColumnName,
             "'{}'".format(code),
 
+            self.email_ColumnName,
+            user.email,
+
             self.userCode_ColumnName,
             user.userCode
         )
 
         
-        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = 1, {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}'".format(
+        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = 1, {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
@@ -214,12 +225,16 @@ class UserTable():
             "'{}'".format(code),
 
             self.userCode_ColumnName,
-            user.userCode
+            user.userCode,
+
+            self.email_ColumnName,
+            user.email,
         )
 
 
         userData = await self._handleUserNotExist(userCode= user.userCode,email=user.email,startingRowParam=sheetStartingRowNumber,
                                                                         usersCodeColumnZeroBasedParam=sheetUsersCodesColumnNumber,
+                                                                        phoneColumnNumber=phoneColumnNumber,
                                                                         daysColumnZeroBasedParam = sheetDaysLeft,
                                                                         sheetUrlParam=sheetUrl)
             
@@ -278,7 +293,7 @@ class UserTable():
                 detail = "User does not exist: {}".format(str(e))
             )
     
-    async def _handleUserNotExist(self, userCode,email,startingRowParam, usersCodeColumnZeroBasedParam, daysColumnZeroBasedParam, sheetUrlParam):
+    async def _handleUserNotExist(self, userCode,email, phoneColumnNumber,startingRowParam, usersCodeColumnZeroBasedParam, daysColumnZeroBasedParam, sheetUrlParam):
        
 
         userData = None
@@ -289,8 +304,8 @@ class UserTable():
             userSheetData = await spreadsheet.scrapeDataFromSpreadSheet(startingRowParam=startingRowParam,
                                                                         usersCodeColumnZeroBasedParam=usersCodeColumnZeroBasedParam,
                                                                         daysColumnZeroBasedParam = daysColumnZeroBasedParam,
-                                                                        sheetUrlParam=sheetUrlParam)
-            userSheetItem = [item for item in userSheetData["data"]["availableUser"] if item[0] == userCode]
+                                                                        sheetUrlParam=sheetUrlParam,phoneColumnNumberParam=phoneColumnNumber)
+            userSheetItem = [item for item in userSheetData if item[0] == userCode]
             print("sheet user:", userSheetItem)
 
             if userSheetItem == []:
@@ -301,7 +316,8 @@ class UserTable():
             elif userData == None:
                 try:
                     print("User does not exist, inserting new user")
-                    userData = await self.insertNewUser(RegisterModel(userCode = userCode,email= email))
+                    userPhone = userSheetItem[0][1]
+                    userData = await self.insertNewUser(RegisterModel(userCode = userCode,email= email,phone=userPhone))
                 except Exception as e:
                     raise HTTPException(
                         status_code = 400,
@@ -325,6 +341,7 @@ class UserTable():
         
         return [{
             self.email_ColumnName:row[self.email_ColumnName],
+            
             self.userCode_ColumnName:row[self.userCode_ColumnName],
             self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
             self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
@@ -347,6 +364,7 @@ class UserTable():
         if WithGenericResponse:
             return GenericResponse({
             self.email_ColumnName:row[self.email_ColumnName],
+            self.phone_ColumnName:row[self.phone_ColumnName],
             self.lastLoginCode_ColumnName:row[self.lastLoginCode_ColumnName],
             self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
             self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
@@ -357,6 +375,7 @@ class UserTable():
         else:
             return {
                 self.email_ColumnName:row[self.email_ColumnName],
+                self.phone_ColumnName:row[self.phone_ColumnName],
                 self.lastLoginCode_ColumnName:row[self.lastLoginCode_ColumnName],
                 self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
                 self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],

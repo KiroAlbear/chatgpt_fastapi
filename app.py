@@ -58,6 +58,10 @@ async def enableDisableAdmin(r:EnableDisableAdminModel):
 async def generateCode():
     return  adminTableFunctions.generateCode()
 
+@app.get('/getAllAdminUsers')
+async def getAllAdminUsers(email:str):
+    return await adminTableFunctions.getAllAdminUsers(email=email)
+
 @app.post('/registerUser')
 async def addUser(r:RegisterModel):
     return await userTableFunctions.insertNewUser(r)

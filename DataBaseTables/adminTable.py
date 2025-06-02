@@ -7,7 +7,9 @@ from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.updateAdminModel import UpdateAdminModel
 from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
 from Models.generic_response import GenericResponse
-from DataBaseTables.userTable import UserTable
+from Models.User.userModel import UserModel
+import DataBaseTables.userTable as userTable
+
 from datetime import datetime, timedelta
 import authenticator as authenticator
 import utils.spreadsheet_utils as spreadsheet
@@ -25,8 +27,10 @@ class AdminTable():
     secretKey_ColumnName = "secretKey"
     sheetUrl_ColumnName = "sheetUrl"
 
+
     sheetStartingRowNumber_ColumnName = "sheetStartingRowNumber"
     sheetUsersCodesColumnNumber_ColumnName = "sheetUsersCodesColumnNumber"
+    sheetPhoneColumnNumber_ColumnName = "sheetPhoneColumnNumber"
     sheetDaysLeftColumnNumber_ColumnName = "sheetDaysLeftColumnNumber"
 
 
@@ -59,6 +63,8 @@ class AdminTable():
         sqlalchemy.Column(self.sheetUrl_ColumnName, sqlalchemy.String, nullable=True),
         sqlalchemy.Column(self.sheetStartingRowNumber_ColumnName, sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.sheetUsersCodesColumnNumber_ColumnName, sqlalchemy.Integer, nullable=False, default=0 ),
+
+        sqlalchemy.Column(self.sheetPhoneColumnNumber_ColumnName, sqlalchemy.Integer, nullable=False, default=0 ),
         sqlalchemy.Column(self.sheetDaysLeftColumnNumber_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.maxLoginPerPeriod_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.resetAFterDays_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
@@ -83,6 +89,7 @@ class AdminTable():
             secretKey=adminModel.secretKey,
             sheetUrl=adminModel.sheetUrl,
             sheetStartingRowNumber=adminModel.sheetStartingRowNumber,
+            sheetPhoneColumnNumber=adminModel.sheetPhoneColumnNumber,
             sheetUsersCodesColumnNumber=adminModel.sheetUsersCodesColumnNumber,
             sheetDaysLeftColumnNumber=adminModel.sheetDaysLeftColumnNumber,
             maxLoginPerPeriod=adminModel.maxLoginPerPeriod,
@@ -163,7 +170,7 @@ class AdminTable():
                 status_code=400,
                 detail="Admin credentials are incorrect"
             )
-        query = "UPDATE {} SET  {} = '{}', {} = '{}', {} = '{}', {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
+        query = "UPDATE {} SET  {} = '{}', {} = '{}', {} = '{}', {} = {}, {} = {}, {} = {}, {} = {}, {} = '{}' WHERE {} = '{}' and {} = '{}'".format(
             self.tableName,
 
             self.secretKey_ColumnName,
@@ -188,6 +195,10 @@ class AdminTable():
               adminModel.resetAFterDays,
 
 
+            self.sheetPhoneColumnNumber_ColumnName,
+              adminModel.sheetPhoneColumnNumber,
+
+
             self.adminUserName_ColumnName,
             adminModel.adminUserName,
 
@@ -210,26 +221,54 @@ class AdminTable():
         
         
     async def getAllAdminUsers(self,email:str):
-        admin_record = self.checkAndReturnAdmin(email)
+        admin_record = await userTable.UserTable().checkAndReturnAdmin(email=email)
 
         
 
         sheetStartingRowNumber = admin_record[self.sheetStartingRowNumber_ColumnName]
         sheetUsersCodesColumnNumber = admin_record[self.sheetUsersCodesColumnNumber_ColumnName] 
+        sheetPHoneColumnNumber = admin_record[self.sheetPhoneColumnNumber_ColumnName]
         sheetDaysLeft = admin_record[self.sheetDaysLeftColumnNumber_ColumnName] 
         sheetUrl = admin_record[self.sheetUrl_ColumnName]
 
         sheetUserData =  await spreadsheet.scrapeDataFromSpreadSheet(startingRowParam=sheetStartingRowNumber,
                                                             usersCodeColumnZeroBasedParam=sheetUsersCodesColumnNumber,
+                                                            phoneColumnNumberParam=sheetPHoneColumnNumber,
                                                             daysColumnZeroBasedParam = sheetDaysLeft,
                                                             sheetUrlParam=sheetUrl)
-        userData = await UserTable().getAllUsersForAdmin(email=email)
-        
-        if sheetUserData["data"]["availableUser"] == []:
+
+        if sheetUserData == []:
             raise HTTPException(
                 status_code = 400,
                 detail = "No Active users found in the sheet"
             )
+        
+        userData = await userTable.UserTable().getAllUsersForAdmin(email=email)
+
+        usersList = []
+        for sheetUser in sheetUserData:
+            userModel = UserModel(
+                        userCode=sheetUser[0],
+                        userPhone=sheetUser[1],
+                        daysLeft=sheetUser[2],
+                        expiryDate=None,
+                        lastLoginDate=None,
+                        loginCount=None,
+                        
+                      
+                    )
+            
+            for user in userData:
+                if sheetUser[0] == user[userTable.UserTable.userCode_ColumnName]:
+                    userModel.expiryDate = user[userTable.UserTable.expiryDate_ColumnName]
+                    userModel.lastLoginDate = user[userTable.UserTable.lastLoginDate_ColumnName]
+                    userModel.loginCount = user[userTable.UserTable.loginCounter_ColumnName]
+                    break
+            usersList.append(userModel)
+
+        return GenericResponse({"usersList":usersList}).to_dict()
+                   
+
         
         
     
@@ -252,6 +291,7 @@ class AdminTable():
             self.secretKey_ColumnName: row[self.secretKey_ColumnName],
             self.sheetUrl_ColumnName: row[self.sheetUrl_ColumnName],
             self.sheetStartingRowNumber_ColumnName: row[self.sheetStartingRowNumber_ColumnName],
+            self.sheetPhoneColumnNumber_ColumnName: row[self.sheetPhoneColumnNumber_ColumnName],
             self.sheetUsersCodesColumnNumber_ColumnName: row[self.sheetUsersCodesColumnNumber_ColumnName],
             self.sheetDaysLeftColumnNumber_ColumnName: row[self.sheetDaysLeftColumnNumber_ColumnName],
             self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
@@ -265,6 +305,7 @@ class AdminTable():
                 self.secretKey_ColumnName: row[self.secretKey_ColumnName],
                 self.sheetUrl_ColumnName: row[self.sheetUrl_ColumnName],
                 self.sheetStartingRowNumber_ColumnName: row[self.sheetStartingRowNumber_ColumnName],
+                self.sheetPhoneColumnNumber_ColumnName: row[self.sheetPhoneColumnNumber_ColumnName],
                 self.sheetUsersCodesColumnNumber_ColumnName: row[self.sheetUsersCodesColumnNumber_ColumnName],
                 self.sheetDaysLeftColumnNumber_ColumnName: row[self.sheetDaysLeftColumnNumber_ColumnName],
                 self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
@@ -284,6 +325,7 @@ class AdminTable():
                 self.secretKey_ColumnName: row[self.secretKey_ColumnName],
                 self.sheetUrl_ColumnName: row[self.sheetUrl_ColumnName],
                 self.sheetStartingRowNumber_ColumnName: row[self.sheetStartingRowNumber_ColumnName],
+                self.sheetPhoneColumnNumber_ColumnName: row[self.sheetPhoneColumnNumber_ColumnName],
                 self.sheetUsersCodesColumnNumber_ColumnName: row[self.sheetUsersCodesColumnNumber_ColumnName],
                 self.sheetDaysLeftColumnNumber_ColumnName: row[self.sheetDaysLeftColumnNumber_ColumnName],
                 self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],

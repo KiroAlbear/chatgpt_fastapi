@@ -8,6 +8,7 @@ class UpdateAdminModel(BaseModel):
     sheetUrl:str
     sheetStartingRowNumber:int
     sheetUsersCodesColumnNumber:int
+    sheetPhoneColumnNumber:int
     sheetDaysLeftColumnNumber:int
     maxLoginPerPeriod:int
     resetAFterDays:int
