@@ -4,6 +4,7 @@ import sqlalchemy
 import random
 import string
 from Models.registerAdminModel import RegisterAdminModel
+from Models.updateAdminModel import UpdateAdminModel
 from datetime import datetime, timedelta
 import authenticator as authenticator
 import utils.spreadsheet_utils as spreadsheet
@@ -106,6 +107,61 @@ class AdminTable():
         else:
            await self.__systemDatabase.execute(query)
            return await self.getAdminData(adminModel.adminUserName,adminModel.adminPassword)
+        
+    async def updateAdmin(self,adminModel:UpdateAdminModel):
+
+        verify_query = "SELECT * FROM {} WHERE {} = '{}' and {} = '{}' ".format(
+            self.tableName,
+
+            self.adminUserName_ColumnName,
+            adminModel.adminUserName,
+
+            self.adminPassword_ColumnName,
+            adminModel.adminPassword
+        )
+        verify_record = await self.__systemDatabase.fetch_one(verify_query)
+        if not verify_record:
+            raise HTTPException(
+                status_code=400,
+                detail="Admin credentials are incorrect"
+            )
+        query = "UPDATE {} SET  {} = '{}', {} = '{}', {} = '{}', {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
+            self.tableName,
+
+            self.secretKey_ColumnName,
+              adminModel.secretKey,
+
+            self.sheetUrl_ColumnName,
+              adminModel.sheetUrl,
+
+            self.sheetStartingRowNumber_ColumnName,
+              adminModel.sheetStartingRowNumber,
+
+            self.sheetUsersCodesColumnNumber_ColumnName,
+              adminModel.sheetUsersCodesColumnNumber,
+
+            self.sheetDaysLeftColumnNumber_ColumnName,
+              adminModel.sheetDaysLeftColumnNumber,
+
+            self.maxLoginPerPeriod_ColumnName,
+              adminModel.maxLoginPerPeriod,
+
+            self.resetAFterDays_ColumnName,
+              adminModel.resetAFterDays,
+
+
+            self.adminUserName_ColumnName,
+            adminModel.adminUserName,
+
+            self.adminPassword_ColumnName,
+            adminModel.adminPassword
+        )
+        await self.__systemDatabase.execute(query)
+        return await self.getAdminData(adminModel.adminUserName,adminModel.adminPassword)
+
+        
+    
+
         
     def generateCode(self):
         # generate 12 charecters and numbers with uppercase letters code

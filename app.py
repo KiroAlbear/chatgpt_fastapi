@@ -4,6 +4,7 @@ from DataBaseTables.adminTable import AdminTable
 from Models.loginModel import LoginModel
 from Models.registerModel import RegisterModel
 from Models.registerAdminModel import RegisterAdminModel
+from Models.updateAdminModel import UpdateAdminModel
 import databases
 import utils.spreadsheet_utils as spreadsheet
 
@@ -42,6 +43,10 @@ async def shutdown():
 @app.post('/registerAdmin')
 async def addAdmin(r:RegisterAdminModel):
     return await adminTableFunctions.insertNewAdmin(r)
+
+@app.post('/updateAdmin')
+async def UpdateAdmin(r:UpdateAdminModel):
+    return await adminTableFunctions.updateAdmin(r)
 
 @app.get('/generateCode')
 async def generateCode():
