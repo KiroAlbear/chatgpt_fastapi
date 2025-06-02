@@ -40,8 +40,8 @@ class UserTable():
         usersTable = sqlalchemy.Table(
         self.tableName,
         self.__metaData,
-        sqlalchemy.Column(self.email_ColumnName,sqlalchemy.String,primary_key=True),
-        sqlalchemy.Column(self.userCode_ColumnName,sqlalchemy.String,nullable=True),
+        sqlalchemy.Column(self.userCode_ColumnName,sqlalchemy.String,primary_key=True),
+        sqlalchemy.Column(self.email_ColumnName,sqlalchemy.String,nullable=True),
         sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
 
         sqlalchemy.Column(self.lastLoginDate_ColumnName, sqlalchemy.String, nullable=True),
@@ -300,11 +300,11 @@ class UserTable():
         userCode)
         row = await self.__systemDatabase.fetch_one(query)
         return {
-            self.email_ColumnName:row[0],
-            self.lastLoginCode_ColumnName:row[1],
-            self.loginCounter_ColumnName:row[2],
-            self.lastLoginDate_ColumnName:row[3],
-            self.firstLoginDate_ColumnName:row[4],
-            self.expiryDate_ColumnName:row[5]
+            self.email_ColumnName:row[self.email_ColumnName],
+            self.lastLoginCode_ColumnName:row[self.lastLoginCode_ColumnName],
+            self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
+            self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
+            self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
+            self.expiryDate_ColumnName:row[self.expiryDate_ColumnName]
         }
 
