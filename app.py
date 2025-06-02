@@ -1,10 +1,12 @@
 from fastapi import  FastAPI
 from DataBaseTables.userTable import UserTable
 from DataBaseTables.adminTable import AdminTable
-from Models.loginModel import LoginModel
-from Models.registerModel import RegisterModel
-from Models.registerAdminModel import RegisterAdminModel
-from Models.updateAdminModel import UpdateAdminModel
+from Models.User.loginModel import LoginModel
+from Models.User.registerModel import RegisterModel
+from Models.User.enableDisableModel import EnableModel
+from Models.Admin.registerAdminModel import RegisterAdminModel
+from Models.Admin.updateAdminModel import UpdateAdminModel
+from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
 import databases
 import utils.spreadsheet_utils as spreadsheet
 
@@ -48,6 +50,10 @@ async def addAdmin(r:RegisterAdminModel):
 async def UpdateAdmin(r:UpdateAdminModel):
     return await adminTableFunctions.updateAdmin(r)
 
+@app.post('/enableDisableAdmin')
+async def enableDisableAdmin(r:EnableDisableAdminModel):
+    return await adminTableFunctions.enableDisableAdmin(r)
+
 @app.get('/generateCode')
 async def generateCode():
     return  adminTableFunctions.generateCode()
@@ -56,9 +62,13 @@ async def generateCode():
 async def addUser(r:RegisterModel):
     return await userTableFunctions.insertNewUser(r)
 
-@app.post('/getUserCode')
-async def getUserCode(r:LoginModel):
+@app.post('/requestUserCode')
+async def requestUserCode(r:LoginModel):
     return await userTableFunctions.requestCodeForUser(r)
+
+@app.post('/enableUser')
+async def enableUser(r:EnableModel):
+    return await userTableFunctions.enableUser(r)
 
 @app.post('/getSpreadSheetData')
 async def getSpreadSheetData():

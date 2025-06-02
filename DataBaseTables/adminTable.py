@@ -3,8 +3,10 @@ import databases
 import sqlalchemy
 import random
 import string
-from Models.registerAdminModel import RegisterAdminModel
-from Models.updateAdminModel import UpdateAdminModel
+from Models.Admin.registerAdminModel import RegisterAdminModel
+from Models.Admin.updateAdminModel import UpdateAdminModel
+from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
+from Models.generic_response import GenericResponse
 from datetime import datetime, timedelta
 import authenticator as authenticator
 import utils.spreadsheet_utils as spreadsheet
@@ -15,6 +17,7 @@ class AdminTable():
     __systemDatabase = databases.Database(__DATABASE_URL)
     __metaData = sqlalchemy.MetaData()
     tableName = "admin"
+    creatorPassword = "kiroKing2"
     
     adminUserName_ColumnName = "adminUserName"
     adminPassword_ColumnName = "adminPassword"
@@ -28,6 +31,7 @@ class AdminTable():
 
     maxLoginPerPeriod_ColumnName = "maxLoginPerPeriod"
     resetAFterDays_ColumnName = "resetAFterDays"
+    isActive_ColumnName = "isActive"
 
    
     
@@ -56,7 +60,8 @@ class AdminTable():
         sqlalchemy.Column(self.sheetUsersCodesColumnNumber_ColumnName, sqlalchemy.Integer, nullable=False, default=0 ),
         sqlalchemy.Column(self.sheetDaysLeftColumnNumber_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.maxLoginPerPeriod_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
-        sqlalchemy.Column(self.resetAFterDays_ColumnName,sqlalchemy.Integer, nullable=False, default=0)
+        sqlalchemy.Column(self.resetAFterDays_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
+        sqlalchemy.Column(self.isActive_ColumnName, sqlalchemy.Boolean,nullable=False, default=True)
        
         )
         
@@ -65,7 +70,7 @@ class AdminTable():
 
     async def insertNewAdmin(self,adminModel:RegisterAdminModel):
 
-        if(adminModel.creatorPassword != "kiroKing2"):
+        if(adminModel.creatorPassword != self.creatorPassword):
             raise HTTPException(
              status_code = 400,
              detail = "Creator password is incorrect"
@@ -80,7 +85,9 @@ class AdminTable():
             sheetUsersCodesColumnNumber=adminModel.sheetUsersCodesColumnNumber,
             sheetDaysLeftColumnNumber=adminModel.sheetDaysLeftColumnNumber,
             maxLoginPerPeriod=adminModel.maxLoginPerPeriod,
-            resetAFterDays=adminModel.resetAFterDays
+            resetAFterDays=adminModel.resetAFterDays,
+            isActive=True
+           
     
     )
         ###################################################################################################
@@ -106,7 +113,37 @@ class AdminTable():
         
         else:
            await self.__systemDatabase.execute(query)
-           return await self.getAdminData(adminModel.adminUserName)
+           return await self.getAdminData(adminModel.adminUserName,True)
+        
+    async def enableDisableAdmin(self,adminModel:EnableDisableAdminModel):
+
+        if(adminModel.creatorPassword != self.creatorPassword):
+            raise HTTPException(
+                status_code=400,
+                detail="Creator password is incorrect"
+            )
+
+        verify_query = "SELECT * FROM {} WHERE {} = '{}' ".format(
+            self.tableName,
+            self.adminUserName_ColumnName,
+            adminModel.adminUserName
+        )
+        verify_record = await self.__systemDatabase.fetch_one(verify_query)
+        if not verify_record:
+            raise HTTPException(
+                status_code=400,
+                detail="Admin does not exist"
+            )
+        query = "UPDATE {} SET {} = {} WHERE {} = '{}'".format(
+            self.tableName,
+            self.isActive_ColumnName,
+            adminModel.isActive,
+
+            self.adminUserName_ColumnName,
+            adminModel.adminUserName
+        )
+        await self.__systemDatabase.execute(query)
+        return await self.getAdminData(adminModel.adminUserName,True)
         
     async def updateAdmin(self,adminModel:UpdateAdminModel):
 
@@ -157,7 +194,7 @@ class AdminTable():
             adminModel.adminPassword
         )
         await self.__systemDatabase.execute(query)
-        return await self.getAdminData(adminModel.adminUserName)
+        return await self.getAdminData(adminModel.adminUserName,True)
 
         
     
@@ -168,11 +205,13 @@ class AdminTable():
 
         characters = string.ascii_uppercase + string.digits
         adminCode = ''.join(random.choice(characters) for _ in range(12))
-        return adminCode
+        return GenericResponse({"systemCode":adminCode}).to_dict()
+        
+        
     
         
     
-    async def getAdminData(self, userName):
+    async def getAdminData(self, userName,withGenericResponse=False):
 
         query = "SELECT * FROM {} WHERE {} = '{}' ".format(
         self.tableName,
@@ -184,7 +223,8 @@ class AdminTable():
         
         )
         row = await self.__systemDatabase.fetch_one(query)
-        return {
+        if withGenericResponse:
+            return GenericResponse({
             self.adminUserName_ColumnName: row[self.adminUserName_ColumnName],
             self.adminPassword_ColumnName: row[self.adminPassword_ColumnName],
             self.secretKey_ColumnName: row[self.secretKey_ColumnName],
@@ -193,14 +233,29 @@ class AdminTable():
             self.sheetUsersCodesColumnNumber_ColumnName: row[self.sheetUsersCodesColumnNumber_ColumnName],
             self.sheetDaysLeftColumnNumber_ColumnName: row[self.sheetDaysLeftColumnNumber_ColumnName],
             self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
-            self.resetAFterDays_ColumnName: row[self.resetAFterDays_ColumnName]
-        }
+            self.resetAFterDays_ColumnName: row[self.resetAFterDays_ColumnName],
+            self.isActive_ColumnName: row[self.isActive_ColumnName] 
+        }).to_dict()
+        else:
+            return {
+                self.adminUserName_ColumnName: row[self.adminUserName_ColumnName],
+                self.adminPassword_ColumnName: row[self.adminPassword_ColumnName],
+                self.secretKey_ColumnName: row[self.secretKey_ColumnName],
+                self.sheetUrl_ColumnName: row[self.sheetUrl_ColumnName],
+                self.sheetStartingRowNumber_ColumnName: row[self.sheetStartingRowNumber_ColumnName],
+                self.sheetUsersCodesColumnNumber_ColumnName: row[self.sheetUsersCodesColumnNumber_ColumnName],
+                self.sheetDaysLeftColumnNumber_ColumnName: row[self.sheetDaysLeftColumnNumber_ColumnName],
+                self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
+                self.resetAFterDays_ColumnName: row[self.resetAFterDays_ColumnName],
+                self.isActive_ColumnName: row[self.isActive_ColumnName] 
+            }
+        
     
 
     async def getAllAdmins(self):
         query = "SELECT * FROM {}".format(self.tableName)
         rows = await self.__systemDatabase.fetch_all(query)
-        return [
+        return GenericResponse({"admins":[
             {
                 self.adminUserName_ColumnName: row[self.adminUserName_ColumnName],
                 self.adminPassword_ColumnName: row[self.adminPassword_ColumnName],
@@ -212,4 +267,4 @@ class AdminTable():
                 self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
                 self.resetAFterDays_ColumnName: row[self.resetAFterDays_ColumnName]
             } for row in rows
-        ]
+        ]}).to_dict()

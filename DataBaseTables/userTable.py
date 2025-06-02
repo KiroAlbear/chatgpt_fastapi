@@ -1,8 +1,10 @@
 from fastapi import HTTPException
 import databases
 import sqlalchemy
-from Models.loginModel import LoginModel
-from Models.registerModel import RegisterModel
+from Models.User.loginModel import LoginModel
+from Models.User.registerModel import RegisterModel
+from Models.User.enableDisableModel import EnableModel
+from Models.generic_response import GenericResponse
 from DataBaseTables.adminTable import AdminTable
 from datetime import datetime, timedelta
 import authenticator as authenticator
@@ -52,28 +54,6 @@ class UserTable():
         
 
         return usersTable
-
-    # async def loginUser(self,userloginModel:LoginModel):
-        
-    #     verification_query = "SELECT * FROM {} WHERE {}='{}' and {} = '{}'".format(
-
-    #         self.tableName,
-
-    #         self.email_ColumnName,
-    #         userloginModel.email,
-
-    #         self.password_ColumnName,
-    #         userloginModel.password
-    #     )
-
-    #     record = await self.__systemDatabase.fetch_one(verification_query)
-    #     if(record != None):
-    #         return record
-    #     else:
-    #         raise HTTPException(
-    #          status_code = 400,
-    #          detail = "Wrong email or password"
-    #         )
     
 
     async def insertNewUser(self,userModel:RegisterModel):
@@ -112,6 +92,33 @@ class UserTable():
         
 
     
+    async def enableUser(self,model:EnableModel):
+        # set expiryDate, firstLoginDate, lastLoginDate to None
+        query = "UPDATE {} SET {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
+            self.tableName,
+
+            self.loginCounter_ColumnName,
+            0,
+
+            self.lastLoginDate_ColumnName,
+            'NULL',
+
+            self.firstLoginDate_ColumnName,
+            'NULL',
+
+            self.expiryDate_ColumnName,
+            'NULL',
+
+            self.userCode_ColumnName,
+            model.userCode,
+
+            self.email_ColumnName,
+            model.email
+        )
+        await self.__systemDatabase.execute(query)
+        return await self.getUserData(model.userCode,True)
+        
+
     async def requestCodeForUser(self,user:LoginModel):
         admin_record = await AdminTable().getAdminData(user.email)
 
@@ -205,9 +212,9 @@ class UserTable():
             try:
                 print("User has never logged in, setting first login date and expiry date")
                 await self.__systemDatabase.execute(resetUserFirstAndExpiryDateQuery)
-                return {
-                    "code": code
-                }
+                return GenericResponse({"code":code}).to_dict()
+                
+                
             except Exception as e:
                 raise HTTPException(
                     status_code = 400,
@@ -233,9 +240,7 @@ class UserTable():
             try:
                 print("User passed expiration period, resetting login counter and setting first login date and expiry date")
                 await self.__systemDatabase.execute(resetUserFirstAndExpiryDateQuery)
-                return {
-                    "code": code
-                }
+                return GenericResponse({"code":code}).to_dict()
             except Exception as e:
                 raise HTTPException(
                     status_code = 400,
@@ -246,11 +251,8 @@ class UserTable():
         try:
 
             await self.__systemDatabase.execute(incrementUserLoginQuery)
-            # check if the user has exceeded the login counter limit
-           
-            return {
-                "code": code
-            }
+            return GenericResponse({"code":code}).to_dict()
+        
         except Exception as e:
            
             raise HTTPException(
@@ -290,7 +292,7 @@ class UserTable():
         return userData
         
                 
-    async def getUserData(self, userCode):
+    async def getUserData(self, userCode, WithGenericResponse = False):
 
         query = "SELECT * FROM {} WHERE {} = '{}'".format(
         self.tableName,
@@ -299,12 +301,26 @@ class UserTable():
         
         userCode)
         row = await self.__systemDatabase.fetch_one(query)
-        return {
+        if WithGenericResponse:
+            return GenericResponse({
             self.email_ColumnName:row[self.email_ColumnName],
             self.lastLoginCode_ColumnName:row[self.lastLoginCode_ColumnName],
             self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
             self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
             self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
             self.expiryDate_ColumnName:row[self.expiryDate_ColumnName]
-        }
+        }).to_dict()
+        
+        else:
+            return {
+                self.email_ColumnName:row[self.email_ColumnName],
+                self.lastLoginCode_ColumnName:row[self.lastLoginCode_ColumnName],
+                self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
+                self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
+                self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
+                self.expiryDate_ColumnName:row[self.expiryDate_ColumnName]
+            }
+        
+        
+       
 
