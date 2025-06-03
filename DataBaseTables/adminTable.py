@@ -235,6 +235,14 @@ class AdminTable():
         sheetPHoneColumnNumber = admin_record[self.sheetPhoneColumnNumber_ColumnName]
         sheetDaysLeft = admin_record[self.sheetDaysLeftColumnNumber_ColumnName] 
         sheetUrl = admin_record[self.sheetUrl_ColumnName]
+        password = admin_record[self.adminPassword_ColumnName]
+
+        if model.password != password:
+            raise HTTPException(
+                status_code=400,
+                detail="Admin incorrect username or password"
+            )
+
 
         sheetUserData =  await spreadsheet.scrapeDataFromSpreadSheet(startingRowParam=sheetStartingRowNumber,
                                                             usersCodeColumnZeroBasedParam=sheetUsersCodesColumnNumber,

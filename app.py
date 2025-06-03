@@ -73,7 +73,7 @@ async def getAllAdminUsers(r:GetAdminUsersModel):
 async def requestUserCode(r:LoginModel):
     return await userTableFunctions.requestCodeForUser(r)
 
-@app.post('/eenableDisableUser')
+@app.post('/enableDisableUser')
 async def enableDisableUser(r:EnableDisableUserModel):
     return await userTableFunctions.enableDisableUser(r)
 
