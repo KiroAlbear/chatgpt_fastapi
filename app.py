@@ -3,7 +3,7 @@ from DataBaseTables.userTable import UserTable
 from DataBaseTables.adminTable import AdminTable
 from Models.User.loginModel import LoginModel
 from Models.User.registerModel import RegisterModel
-from Models.User.enableDisableModel import EnableModel
+from Models.User.enableDisableModel import EnableDisableUserModel
 from Models.User.getAdminUsersModel import GetAdminUsersModel
 from Models.User.resetAllAdminUsersCodesModel import ResetAllAdminUsersCodesModel
 
@@ -73,9 +73,9 @@ async def getAllAdminUsers(r:GetAdminUsersModel):
 async def requestUserCode(r:LoginModel):
     return await userTableFunctions.requestCodeForUser(r)
 
-@app.post('/enableUser')
-async def enableUser(r:EnableModel):
-    return await userTableFunctions.enableUser(r)
+@app.post('/eenableDisableUser')
+async def enableDisableUser(r:EnableDisableUserModel):
+    return await userTableFunctions.enableDisableUser(r)
 
 @app.post('/enableAllAdminUsers')
 async def enableAllAdminUsers(r:ResetAllAdminUsersCodesModel):

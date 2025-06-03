@@ -3,7 +3,7 @@ import databases
 import sqlalchemy
 from Models.User.loginModel import LoginModel
 from Models.User.registerModel import RegisterModel
-from Models.User.enableDisableModel import EnableModel
+from Models.User.enableDisableModel import EnableDisableUserModel
 from Models.User.resetAllAdminUsersCodesModel import ResetAllAdminUsersCodesModel
 from Models.User.getAdminUsersModel import GetAdminUsersModel
 
@@ -29,6 +29,7 @@ class UserTable():
     lastLoginDate_ColumnName = "lastLoginDate"
     firstLoginDate_ColumnName = "firstLoginDate"
     expiryDate_ColumnName = "expiryDate"
+    isActive_ColumnName = "isActive"
   
     __usersTable = 0
 
@@ -54,7 +55,9 @@ class UserTable():
         sqlalchemy.Column(self.lastLoginDate_ColumnName, sqlalchemy.String, nullable=True),
         sqlalchemy.Column(self.lastLoginCode_ColumnName, sqlalchemy.String, nullable=True),
         sqlalchemy.Column(self.firstLoginDate_ColumnName, sqlalchemy.String,nullable=True),
-        sqlalchemy.Column(self.expiryDate_ColumnName, sqlalchemy.String,nullable=True )  # Optional expiry date
+        sqlalchemy.Column(self.expiryDate_ColumnName, sqlalchemy.String,nullable=True ),
+        sqlalchemy.Column(self.isActive_ColumnName, sqlalchemy.Boolean,nullable=False, default=True)
+
         )
         
 
@@ -69,7 +72,8 @@ class UserTable():
         loginCounter = 0,
         lastLoginDate = None,
         firstLoginDate = None,
-        expiryDate = None
+        expiryDate = None,
+        isActive = True,
     )
         ###################################################################################################
 
@@ -101,7 +105,7 @@ class UserTable():
         
 
     async def enableAllAdminUsers(self,model:ResetAllAdminUsersCodesModel):
-        query = "UPDATE {} SET {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}'".format(
+        query = "UPDATE {} SET {} = {}, {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}'".format(
                     self.tableName,
 
                     self.loginCounter_ColumnName,
@@ -116,22 +120,22 @@ class UserTable():
                     self.expiryDate_ColumnName,
                     'NULL',
 
+                    self.isActive_ColumnName,
+                    True,
+
                     self.email_ColumnName,
                     model.email
                 )
         await self.__systemDatabase.execute(query)
         return await AdminTable().getAllAdminUsers(model=GetAdminUsersModel(email=model.email))
 
-    async def enableUser(self,model:EnableModel):
-        # set expiryDate, firstLoginDate, lastLoginDate to None
+    async def enableDisableUser(self,model:EnableDisableUserModel):
+    
         query = "UPDATE {} SET {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
             0,
-
-            self.lastLoginDate_ColumnName,
-            'NULL',
 
             self.firstLoginDate_ColumnName,
             'NULL',
@@ -139,12 +143,17 @@ class UserTable():
             self.expiryDate_ColumnName,
             'NULL',
 
+            self.isActive_ColumnName,
+            model.isActive,
+
             self.userCode_ColumnName,
             model.userCode,
 
             self.email_ColumnName,
             model.email
         )
+      
+    
         await self.__systemDatabase.execute(query)
         return await self.getUserData(userCode=model.userCode,email=model.email, WithGenericResponse=True)
         
@@ -216,7 +225,7 @@ class UserTable():
             self.loginCounter_ColumnName,
             self.loginCounter_ColumnName,
 
-             self.lastLoginDate_ColumnName,
+            self.lastLoginDate_ColumnName,
             "'{}'".format(currentDateString),
 
             self.lastLoginCode_ColumnName,
@@ -262,10 +271,16 @@ class UserTable():
                                                                         daysColumnZeroBasedParam = sheetDaysLeft,
                                                                         sheetUrlParam=sheetUrl)
             
-        
-        
+
+        # Check if the user is active
+        if (userData[self.isActive_ColumnName] == False):
+            raise HTTPException(
+                status_code = 400,
+                detail = "This user is disabled, please contact the admin to enable it"
+            )
+
         # If the user has never logged in, set the first login date and expiry date
-        if (userData[self.lastLoginDate_ColumnName] == None or userData[self.firstLoginDate_ColumnName] == None or userData[self.expiryDate_ColumnName] == None):
+        if (userData[self.firstLoginDate_ColumnName] == None and userData[self.expiryDate_ColumnName] == None):
             try:
                 print("User has never logged in, setting first login date and expiry date")
                 await self.__systemDatabase.execute(resetUserFirstAndExpiryDateQuery)
@@ -370,7 +385,8 @@ class UserTable():
             self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
             self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
             self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
-            self.expiryDate_ColumnName:row[self.expiryDate_ColumnName]
+            self.expiryDate_ColumnName:row[self.expiryDate_ColumnName],
+            self.isActive_ColumnName:row[self.isActive_ColumnName],
         } for row in allUsers]
                 
     async def getUserData(self, userCode:str, email:str, WithGenericResponse = False):
@@ -393,7 +409,8 @@ class UserTable():
             self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
             self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
             self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
-            self.expiryDate_ColumnName:row[self.expiryDate_ColumnName]
+            self.expiryDate_ColumnName:row[self.expiryDate_ColumnName],
+             self.isActive_ColumnName:row[self.isActive_ColumnName]
         }).to_dict()
         
         else:
@@ -404,7 +421,8 @@ class UserTable():
                 self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
                 self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
                 self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
-                self.expiryDate_ColumnName:row[self.expiryDate_ColumnName]
+                self.expiryDate_ColumnName:row[self.expiryDate_ColumnName],
+                 self.isActive_ColumnName:row[self.isActive_ColumnName]
             }
         
         

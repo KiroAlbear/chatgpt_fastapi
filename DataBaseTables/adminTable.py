@@ -259,6 +259,7 @@ class AdminTable():
                         expiryDate=None,
                         lastLoginDate=None,
                         loginCount=None,
+                        isActive=1
                         
                       
                     )
@@ -268,6 +269,7 @@ class AdminTable():
                     userModel.expiryDate = user[userTable.UserTable.expiryDate_ColumnName]
                     userModel.lastLoginDate = user[userTable.UserTable.lastLoginDate_ColumnName]
                     userModel.loginCount = user[userTable.UserTable.loginCounter_ColumnName]
+                    userModel.isActive = user[userTable.UserTable.isActive_ColumnName]
                     break
             usersList.append(userModel)
 
