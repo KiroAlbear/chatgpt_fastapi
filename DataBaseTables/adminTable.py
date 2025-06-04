@@ -123,7 +123,7 @@ class AdminTable():
         
         else:
            await self.__systemDatabase.execute(query)
-           return await self.getAdminData(adminModel.adminUserName,True)
+           return await self.getAdminData(userName=adminModel.adminUserName,password=adminModel.adminPassword ,withGenericResponse=True)
         
     async def enableDisableAdmin(self,adminModel:EnableDisableAdminModel):
 
@@ -153,7 +153,7 @@ class AdminTable():
             adminModel.adminUserName
         )
         await self.__systemDatabase.execute(query)
-        return await self.getAdminData(adminModel.adminUserName,True)
+        return await self.getAdminData(userName=adminModel.adminUserName,password=None,withGenericResponse=True)
         
     async def updateAdmin(self,adminModel:UpdateAdminModel):
 
@@ -208,7 +208,7 @@ class AdminTable():
             adminModel.adminPassword
         )
         await self.__systemDatabase.execute(query)
-        return await self.getAdminData(adminModel.adminUserName,True)
+        return await self.getAdminData(userName=adminModel.adminUserName,password=adminModel.adminPassword, withGenericResponse=True)
 
         
     
@@ -287,17 +287,28 @@ class AdminTable():
         
         
     
-    async def getAdminData(self, userName,withGenericResponse=False):
+    async def getAdminData(self, userName,password,withGenericResponse=False):
+        query = None
+        if password == None:
+            query = "SELECT * FROM {} WHERE {} = '{}' ".format(
+            self.tableName,
 
-        query = "SELECT * FROM {} WHERE {} = '{}' ".format(
-        self.tableName,
+            self.adminUserName_ColumnName,
+            userName,
+                    
+            )
+        else:
+            query = "SELECT * FROM {} WHERE {} = '{}' and {} = '{}'".format(
+            self.tableName,
 
-        self.adminUserName_ColumnName,
-        userName,
-        
+            self.adminUserName_ColumnName,
+            userName,
 
-        
-        )
+            self.adminPassword_ColumnName,
+            password
+                    
+            )
+
         row = await self.__systemDatabase.fetch_one(query)
         if withGenericResponse:
             return GenericResponse({

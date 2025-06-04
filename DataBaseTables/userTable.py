@@ -6,6 +6,7 @@ from Models.User.registerModel import RegisterModel
 from Models.User.enableDisableModel import EnableDisableUserModel
 from Models.User.resetAllAdminUsersCodesModel import ResetAllAdminUsersCodesModel
 from Models.User.getAdminUsersModel import GetAdminUsersModel
+from Models.User.adminOrUserModel import AdminOrUserModel
 
 from Models.generic_response import GenericResponse
 from DataBaseTables.adminTable import AdminTable
@@ -158,10 +159,39 @@ class UserTable():
         return await self.getUserData(userCode=model.userCode,email=model.email, WithGenericResponse=True)
         
 
+    async def getUserOrAdminData(self, model:AdminOrUserModel):
+
+       
+        try:
+            admin_record = await AdminTable().getAdminData(userName=model.email,password=model.password)
+            return GenericResponse({
+                "isAdmin": True,
+            }).to_dict()
+        except Exception:
+            print("Admin not found, checking if user exists")
+
+
+        
+        try:
+            user_record = await self.getUserData(userCode=model.password, email=model.email)
+            return GenericResponse({
+                "isAdmin": False,
+            }).to_dict()
+        except Exception:
+            print("User not found")
+            raise HTTPException(
+                status_code = 400,
+                detail = "Invalid credentials, please try again"
+            )
+          
+        
+
+
+
     async def checkAndReturnAdmin(self,email):
         admin_record = None
         try:
-            admin_record = await AdminTable().getAdminData(email)
+            admin_record = await AdminTable().getAdminData(userName=email,password=None)
         except Exception:
              raise HTTPException(
                 status_code = 400,

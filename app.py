@@ -6,6 +6,7 @@ from Models.User.registerModel import RegisterModel
 from Models.User.enableDisableModel import EnableDisableUserModel
 from Models.User.getAdminUsersModel import GetAdminUsersModel
 from Models.User.resetAllAdminUsersCodesModel import ResetAllAdminUsersCodesModel
+from Models.User.adminOrUserModel import AdminOrUserModel
 
 from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.updateAdminModel import UpdateAdminModel
@@ -68,6 +69,10 @@ async def getAllAdminUsers(r:GetAdminUsersModel):
 # @app.post('/registerUser')
 # async def addUser(r:RegisterModel):
 #     return await userTableFunctions.insertNewUser(r)
+
+@app.post('/getUserOrAdminData')
+async def getUserOrAdminData(r:AdminOrUserModel):
+    return await userTableFunctions.getUserOrAdminData(r)
 
 @app.post('/requestUserCode')
 async def requestUserCode(r:LoginModel):
