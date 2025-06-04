@@ -82,13 +82,13 @@ async def requestUserCode(r:LoginModel):
 async def enableDisableUser(r:EnableDisableUserModel):
     return await userTableFunctions.enableDisableUser(r)
 
-@app.post('/enableAllAdminUsers')
-async def enableAllAdminUsers(r:ResetAllAdminUsersCodesModel):
-    return await userTableFunctions.enableAllAdminUsers(r)
+@app.post('/enableDisableAllAdminUsers')
+async def enableDisableAllAdminUsers(r:ResetAllAdminUsersCodesModel):
+    return await userTableFunctions.enableDisableAllAdminUsers(r)
 
-# @app.post('/getSpreadSheetData')
-# async def getSpreadSheetData():
-#     return await spreadsheet.scrapeDataFromSpreadSheet()
+@app.post('/getSpreadSheetData')
+async def getSpreadSheetData():
+    return await spreadsheet.scrapeDataFromSpreadSheet()
 
 ## Provider APIS
 ######################################################################################

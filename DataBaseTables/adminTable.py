@@ -266,6 +266,7 @@ class AdminTable():
                         daysLeft=sheetUser[2],
                         expiryDate=None,
                         lastLoginDate=None,
+                        firstLoginDate=None,
                         loginCount=None,
                         isActive=1
                         
@@ -276,6 +277,7 @@ class AdminTable():
                 if sheetUser[0] == user[userTable.UserTable.userCode_ColumnName]:
                     userModel.expiryDate = user[userTable.UserTable.expiryDate_ColumnName]
                     userModel.lastLoginDate = user[userTable.UserTable.lastLoginDate_ColumnName]
+                    userModel.firstLoginDate = user[userTable.UserTable.firstLoginDate_ColumnName]
                     userModel.loginCount = user[userTable.UserTable.loginCounter_ColumnName]
                     userModel.isActive = user[userTable.UserTable.isActive_ColumnName]
                     break
