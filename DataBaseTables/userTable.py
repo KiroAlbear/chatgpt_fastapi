@@ -128,7 +128,7 @@ class UserTable():
                     model.email
                 )
         await self.__systemDatabase.execute(query)
-        return await AdminTable().getAllAdminUsers(model=GetAdminUsersModel(email=model.email))
+        return await AdminTable().getAllAdminUsers(model=GetAdminUsersModel(email=model.email,password=model.password))
 
     async def enableDisableUser(self,model:EnableDisableUserModel):
     
@@ -161,14 +161,15 @@ class UserTable():
 
     async def getUserOrAdminData(self, model:AdminOrUserModel):
 
-       
         try:
             admin_record = await AdminTable().getAdminData(userName=model.email,password=model.password)
-            return GenericResponse({
-                "isAdmin": True,
-            }).to_dict()
+            if admin_record:
+                return GenericResponse({
+                    "isAdmin": True,
+                }).to_dict()
         except Exception:
-            print("Admin not found, checking if user exists")
+            print("Admin not found, checking for user")
+            # If admin not found, check for user
 
 
         

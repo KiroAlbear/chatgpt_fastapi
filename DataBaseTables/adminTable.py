@@ -310,6 +310,20 @@ class AdminTable():
             )
 
         row = await self.__systemDatabase.fetch_one(query)
+
+        if row is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Admin is not found"
+            )
+
+        if row[self.isActive_ColumnName] == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Admin is disabled"
+            )
+        
+
         if withGenericResponse:
             return GenericResponse({
             self.adminUserName_ColumnName: row[self.adminUserName_ColumnName],
