@@ -105,8 +105,10 @@ class UserTable():
            return await self.getUserData(userCode=userModel.userCode,email=userModel.email)
         
 
-    async def enableAllAdminUsers(self,model:ResetAllAdminUsersCodesModel):
-        query = "UPDATE {} SET {} = {}, {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}'".format(
+    async def enableDisableAllAdminUsers(self,model:ResetAllAdminUsersCodesModel):
+        await AdminTable().getAdminData(userName=model.email,password=model.password)
+
+        query = "UPDATE {} SET {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}'".format(
                     self.tableName,
 
                     self.loginCounter_ColumnName,
@@ -115,14 +117,12 @@ class UserTable():
                     self.lastLoginDate_ColumnName,
                     'NULL',
 
-                    self.firstLoginDate_ColumnName,
-                    'NULL',
-
                     self.expiryDate_ColumnName,
                     'NULL',
 
                     self.isActive_ColumnName,
-                    True,
+                    model.isActive,
+
 
                     self.email_ColumnName,
                     model.email
@@ -132,14 +132,11 @@ class UserTable():
 
     async def enableDisableUser(self,model:EnableDisableUserModel):
     
-        query = "UPDATE {} SET {} = {}, {} = {}, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
+        query = "UPDATE {} SET {} = {}, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
             self.tableName,
 
             self.loginCounter_ColumnName,
             0,
-
-            self.firstLoginDate_ColumnName,
-            'NULL',
 
             self.expiryDate_ColumnName,
             'NULL',
@@ -324,8 +321,13 @@ class UserTable():
                     detail = "Error resetting user dates: {}".format(str(e))
                 )
 
+        
         # firstLoginDateString = userData[self.lastLoginDate_ColumnName]
         expiryDateString = userData[self.expiryDate_ColumnName]
+
+        if(expiryDateString == None):
+          expiryDateString = currentDateString
+            
 
         # firstLoginDate = datetime.strptime(firstLoginDateString, datetime_format)
         expiryDate = datetime.strptime(expiryDateString, datetime_format)
@@ -350,7 +352,6 @@ class UserTable():
                     detail = "Error resetting user dates: {}".format(str(e))
                 )
     
-
         try:
 
             await self.__systemDatabase.execute(incrementUserLoginQuery)
@@ -418,6 +419,7 @@ class UserTable():
             self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
             self.expiryDate_ColumnName:row[self.expiryDate_ColumnName],
             self.isActive_ColumnName:row[self.isActive_ColumnName],
+        
         } for row in allUsers]
                 
     async def getUserData(self, userCode:str, email:str, WithGenericResponse = False):
@@ -432,6 +434,13 @@ class UserTable():
         email
         )
         row = await self.__systemDatabase.fetch_one(query)
+
+        if row is None:
+            raise HTTPException(
+                status_code = 400,
+                detail = "User not found"
+            )
+
         if WithGenericResponse:
             return GenericResponse({
             self.email_ColumnName:row[self.email_ColumnName],

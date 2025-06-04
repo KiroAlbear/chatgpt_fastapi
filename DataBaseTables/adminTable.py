@@ -229,13 +229,14 @@ class AdminTable():
         admin_record = await userTable.UserTable().checkAndReturnAdmin(email=model.email)
 
         
-
+        admin_email = admin_record[self.adminUserName_ColumnName]
         sheetStartingRowNumber = admin_record[self.sheetStartingRowNumber_ColumnName]
         sheetUsersCodesColumnNumber = admin_record[self.sheetUsersCodesColumnNumber_ColumnName] 
         sheetPHoneColumnNumber = admin_record[self.sheetPhoneColumnNumber_ColumnName]
         sheetDaysLeft = admin_record[self.sheetDaysLeftColumnNumber_ColumnName] 
         sheetUrl = admin_record[self.sheetUrl_ColumnName]
         password = admin_record[self.adminPassword_ColumnName]
+        maxLoginPerPeriod = admin_record[self.maxLoginPerPeriod_ColumnName]
 
         if model.password != password:
             raise HTTPException(
@@ -264,8 +265,10 @@ class AdminTable():
                         userCode=sheetUser[0],
                         userPhone=sheetUser[1],
                         daysLeft=sheetUser[2],
+                        email=admin_email,
                         expiryDate=None,
                         lastLoginDate=None,
+                        firstLoginDate=None,
                         loginCount=None,
                         isActive=1
                         
@@ -276,8 +279,10 @@ class AdminTable():
                 if sheetUser[0] == user[userTable.UserTable.userCode_ColumnName]:
                     userModel.expiryDate = user[userTable.UserTable.expiryDate_ColumnName]
                     userModel.lastLoginDate = user[userTable.UserTable.lastLoginDate_ColumnName]
+                    userModel.firstLoginDate = user[userTable.UserTable.firstLoginDate_ColumnName]
                     userModel.loginCount = user[userTable.UserTable.loginCounter_ColumnName]
                     userModel.isActive = user[userTable.UserTable.isActive_ColumnName]
+                    userModel.isMaximumCodesReached = user[userTable.UserTable.loginCounter_ColumnName] >= maxLoginPerPeriod
                     break
             usersList.append(userModel)
 
