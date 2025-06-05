@@ -58,9 +58,9 @@ async def UpdateAdmin(r:UpdateAdminModel):
 async def enableDisableAdmin(r:EnableDisableAdminModel):
     return await adminTableFunctions.enableDisableAdmin(r)
 
-@app.get('/generateCode')
-async def generateCode():
-    return  adminTableFunctions.generateCode()
+@app.post('/registerUser')
+async def registerUser(r:RegisterModel):
+    return await userTableFunctions.insertNewUser(r)
 
 @app.post('/getAllAdminUsers')
 async def getAllAdminUsers(r:GetAdminUsersModel):

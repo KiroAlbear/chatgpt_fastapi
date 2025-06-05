@@ -1,6 +1,9 @@
 from fastapi import HTTPException
 import databases
 import sqlalchemy
+
+import random
+import string
 from Models.User.loginModel import LoginModel
 from Models.User.registerModel import RegisterModel
 from Models.User.enableDisableModel import EnableDisableUserModel
@@ -24,7 +27,11 @@ class UserTable():
     __metaData = sqlalchemy.MetaData()
     tableName = "users"
     email_ColumnName = "email"
+    name_ColumnName = "name"
     phone_ColumnName = "phone"
+    startDate_ColumnName = "startDate"
+    endDate_ColumnName = "endDate"
+    
     userCode_ColumnName = "userCode"
     loginCounter_ColumnName = "loginCounter"
     lastLoginCode_ColumnName = "lastLoginCode"
@@ -34,6 +41,8 @@ class UserTable():
     expiryDate_ColumnName = "expiryDate"
     isActive_ColumnName = "isActive"
     isMaximumCodesReached = "isMaximumCodesReached"
+
+    datetime_format = "%Y-%m-%d"
 
   
     __usersTable = 0
@@ -54,9 +63,14 @@ class UserTable():
         self.__metaData,
         sqlalchemy.Column(self.userCode_ColumnName,sqlalchemy.String,primary_key=True),
         sqlalchemy.Column(self.email_ColumnName,sqlalchemy.String,nullable=True),
+        sqlalchemy.Column(self.name_ColumnName,sqlalchemy.String,nullable=True),
         sqlalchemy.Column(self.phone_ColumnName,sqlalchemy.String,nullable=True),
-        sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
+       
 
+        sqlalchemy.Column(self.startDate_ColumnName, sqlalchemy.String, nullable=True),
+        sqlalchemy.Column(self.endDate_ColumnName, sqlalchemy.String, nullable=True),
+
+        sqlalchemy.Column(self.loginCounter_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.lastLoginDate_ColumnName, sqlalchemy.String, nullable=True),
         sqlalchemy.Column(self.lastLoginCode_ColumnName, sqlalchemy.String, nullable=True),
         sqlalchemy.Column(self.firstLoginDate_ColumnName, sqlalchemy.String,nullable=True),
@@ -69,44 +83,54 @@ class UserTable():
         return usersTable
     
 
+    async def generateCode(self):
+        
+        # while the code already exists in the database, generate a new code
+        # generate 12 charecters and numbers with uppercase letters code
+        generatedCode = None
+        while True:
+            characters = string.ascii_uppercase + string.digits
+            generatedCode = ''.join(random.choice(characters) for _ in range(12))
+
+            user_verification_query = "SELECT * FROM {} WHERE {} = '{}' ".format(
+                self.tableName,
+
+                self.userCode_ColumnName,
+                generatedCode,
+
+            )
+            
+            user_verification_record = await self.__systemDatabase.fetch_all(user_verification_query)
+            if len(user_verification_record) == 0:
+                break
+
+
+
+        return generatedCode
+    
+
     async def insertNewUser(self,userModel:RegisterModel):
+        await AdminTable().getAdminData(userName=userModel.email,password=None)
+        generatedCode = await self.generateCode()
+        
         query = self.__usersTable.insert().values(
         email = userModel.email,
-        userCode = userModel.userCode,
+        name = userModel.name,
+        userCode = generatedCode,
         phone = userModel.phone,
+       
+        startDate = userModel.startDate,
+        endDate = userModel.endDate,
         loginCounter = 0,
         lastLoginDate = None,
         firstLoginDate = None,
         expiryDate = None,
         isActive = True,
     )
-        ###################################################################################################
 
-        user_verification_query = "SELECT * FROM {} WHERE {} = '{}' and {} = '{}'".format(
-           self.tableName,
 
-           self.userCode_ColumnName,
-           userModel.userCode,
-
-           self.email_ColumnName,
-           userModel.email
-        )
-        user_verification_record = await self.__systemDatabase.fetch_all(user_verification_query)
-
-        ###################################################################################################
-
-        
-     
-        if(len(user_verification_record) > 0):
-            raise HTTPException(
-             status_code = 400,
-             detail = "This User already exists"
-            )
-
-        
-        else:
-           await self.__systemDatabase.execute(query)
-           return await self.getUserData(userCode=userModel.userCode,email=userModel.email)
+        await self.__systemDatabase.execute(query)
+        return await self.getUserData(userCode=generatedCode,email=userModel.email,WithGenericResponse=True)
         
 
     async def enableDisableAllAdminUsers(self,model:ResetAllAdminUsersCodesModel):
@@ -176,9 +200,10 @@ class UserTable():
         
         try:
             user_record = await self.getUserData(userCode=model.password, email=model.email)
-            return GenericResponse({
-                "isAdmin": False,
-            }).to_dict()
+            if user_record:
+                return GenericResponse({
+                    "isAdmin": False,
+                }).to_dict()
         except Exception:
             print("User not found")
             raise HTTPException(
@@ -186,30 +211,7 @@ class UserTable():
                 detail = "Invalid credentials, please try again"
             )
           
-        
-
-
-
-    async def checkAndReturnAdmin(self,email):
-        admin_record = None
-        try:
-            admin_record = await AdminTable().getAdminData(userName=email,password=None)
-        except Exception:
-             raise HTTPException(
-                status_code = 400,
-                detail = "Admin not found"
-            )
-
-        if not admin_record:
-            raise HTTPException(
-                status_code = 400,
-                detail = "Admin not found"
-            )
-        
-        return admin_record
-        
-
-
+    
 
     async def resetUser(self,user:LoginModel):
         resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = 0, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
@@ -237,7 +239,7 @@ class UserTable():
         return await self.getUserData(userCode=user.userCode,email=user.email, WithGenericResponse=True)
 
     async def requestCodeForUser(self,user:LoginModel):
-        admin_record = await self.checkAndReturnAdmin(user.email)
+        admin_record =  await AdminTable().getAdminData(userName=user.email,password=None)
 
 
         sheetStartingRowNumber = admin_record[AdminTable.sheetStartingRowNumber_ColumnName]
@@ -253,14 +255,14 @@ class UserTable():
 
 
 
-        datetime_format = "%Y-%m-%d"
+        
         currentDate = datetime.now()
-        currentDateString = currentDate.strftime(datetime_format)
+        currentDateString = currentDate.strftime(self.datetime_format)
 
         maxUserLoginCounterPerPeriod = maxLoginPerPeriodParam ########### Change this value to set the maximum number of login attempts per period of time
         resetAFterDays = resetAFterDaysParam ########### Change this value to set the number of days after which the login counter resets
 
-        resetAfterDateString = (currentDate + timedelta(days=resetAFterDays)).strftime(datetime_format)
+        resetAfterDateString = (currentDate + timedelta(days=resetAFterDays)).strftime(self.datetime_format)
         
         code = None
         try:
@@ -320,19 +322,15 @@ class UserTable():
         )
 
 
-        userData = await self._handleUserNotExist(userCode= user.userCode,email=user.email,startingRowParam=sheetStartingRowNumber,
-                                                                        usersCodeColumnZeroBasedParam=sheetUsersCodesColumnNumber,
-                                                                        phoneColumnNumber=phoneColumnNumber,
-                                                                        daysColumnZeroBasedParam = sheetDaysLeft,
-                                                                        sheetUrlParam=sheetUrl)
+        # userData = await self._handleUserNotExist(userCode= user.userCode,email=user.email,startingRowParam=sheetStartingRowNumber,
+        #                                                                 usersCodeColumnZeroBasedParam=sheetUsersCodesColumnNumber,
+        #                                                                 phoneColumnNumber=phoneColumnNumber,
+        #                                                                 daysColumnZeroBasedParam = sheetDaysLeft,
+        #                                                                 sheetUrlParam=sheetUrl)
             
-
+        userData = await self.getUserData(userCode=user.userCode,email=user.email)
         # Check if the user is active
-        if (userData[self.isActive_ColumnName] == False):
-            raise HTTPException(
-                status_code = 400,
-                detail = "This user is disabled, please contact the admin to enable it"
-            )
+
 
         # If the user has never logged in, set the first login date and expiry date
         if (userData[self.firstLoginDate_ColumnName] == None and userData[self.expiryDate_ColumnName] == None):
@@ -357,7 +355,7 @@ class UserTable():
             
 
         # firstLoginDate = datetime.strptime(firstLoginDateString, datetime_format)
-        expiryDate = datetime.strptime(expiryDateString, datetime_format)
+        expiryDate = datetime.strptime(expiryDateString, self.datetime_format)
             
         
         # if user has exceeded the maximum login per time period, raise an error
@@ -391,41 +389,54 @@ class UserTable():
                 detail = "User does not exist: {}".format(str(e))
             )
     
-    async def _handleUserNotExist(self, userCode,email, phoneColumnNumber,startingRowParam, usersCodeColumnZeroBasedParam, daysColumnZeroBasedParam, sheetUrlParam):
+    # async def _handleUserNotExist(self, userCode,email, phoneColumnNumber,startingRowParam, usersCodeColumnZeroBasedParam, daysColumnZeroBasedParam, sheetUrlParam):
        
 
-        userData = None
+    #     userData = None
 
-        try:
-            userData = await self.getUserData(userCode=userCode,email=email)
-        except Exception as e:
-            userSheetData = await spreadsheet.scrapeDataFromSpreadSheet(startingRowParam=startingRowParam,
-                                                                        usersCodeColumnZeroBasedParam=usersCodeColumnZeroBasedParam,
-                                                                        daysColumnZeroBasedParam = daysColumnZeroBasedParam,
-                                                                        sheetUrlParam=sheetUrlParam,phoneColumnNumberParam=phoneColumnNumber)
-            userSheetItem = [item for item in userSheetData if item[0] == userCode]
-            print("sheet user:", userSheetItem)
+    #     try:
+    #         userData = await self.getUserData(userCode=userCode,email=email)
+    #     except Exception as e:
+    #         userSheetData = await spreadsheet.scrapeDataFromSpreadSheet(startingRowParam=startingRowParam,
+    #                                                                     usersCodeColumnZeroBasedParam=usersCodeColumnZeroBasedParam,
+    #                                                                     daysColumnZeroBasedParam = daysColumnZeroBasedParam,
+    #                                                                     sheetUrlParam=sheetUrlParam,phoneColumnNumberParam=phoneColumnNumber)
+    #         userSheetItem = [item for item in userSheetData if item[0] == userCode]
+    #         print("sheet user:", userSheetItem)
 
-            if userSheetItem == []:
-                raise HTTPException(
-                    status_code = 400,
-                    detail = "This Phone Number is not found in the sheet"
-                )
-            elif userData == None:
-                try:
-                    print("User does not exist, inserting new user")
-                    userPhone = userSheetItem[0][1]
-                    userData = await self.insertNewUser(RegisterModel(userCode = userCode,email= email,phone=userPhone))
-                except Exception as e:
-                    raise HTTPException(
-                        status_code = 400,
-                        detail = "Error inserting new user: {}".format(str(e))
-                    )
-        return userData
+    #         if userSheetItem == []:
+    #             raise HTTPException(
+    #                 status_code = 400,
+    #                 detail = "This Phone Number is not found in the sheet"
+    #             )
+    #         elif userData == None:
+    #             try:
+    #                 print("User does not exist, inserting new user")
+    #                 userPhone = userSheetItem[0][1]
+    #                 userData = await self.insertNewUser(RegisterModel(userCode = userCode,email= email,phone=userPhone))
+    #             except Exception as e:
+    #                 raise HTTPException(
+    #                     status_code = 400,
+    #                     detail = "Error inserting new user: {}".format(str(e))
+    #                 )
+    #     return userData
         
+    def calculateDaysLeft(self, startDate:str, endDate:str):
+        """
+        Calculate the number of days left between startDate and endDate.
+        """
+      
+        start_date = datetime.strptime(startDate, self.datetime_format)
+        end_date = datetime.strptime(endDate, self.datetime_format)
+        
+        # Calculate the difference in days
+        days_left = (end_date - start_date).days
+        
+        return days_left if days_left > 0 else 0
+    
     
     async def getAllUsersForAdmin(self, email:str):
-        await self.checkAndReturnAdmin(email)
+        await AdminTable().getAdminData(userName=email,password=None)
 
         
         query = "SELECT * FROM {} WHERE {} = '{}'".format(
@@ -439,7 +450,11 @@ class UserTable():
         
         return [{
             self.email_ColumnName:row[self.email_ColumnName],
+            self.name_ColumnName:row[self.name_ColumnName],
+            self.phone_ColumnName:row[self.phone_ColumnName],
             
+            self.startDate_ColumnName:row[self.startDate_ColumnName],
+            self.endDate_ColumnName:row[self.endDate_ColumnName],
             self.userCode_ColumnName:row[self.userCode_ColumnName],
             self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
             self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
@@ -450,7 +465,7 @@ class UserTable():
         } for row in allUsers]
                 
     async def getUserData(self, userCode:str, email:str, WithGenericResponse = False):
-        admin_record = await self.checkAndReturnAdmin(email)
+        admin_record =  await AdminTable().getAdminData(userName=email,password=None)
         maxLoginPerPeriodParam = admin_record[AdminTable.maxLoginPerPeriod_ColumnName]
        
 
@@ -471,13 +486,36 @@ class UserTable():
                 detail = "User not found"
             )
         
+        if (row[self.isActive_ColumnName] == False):
+            raise HTTPException(
+                status_code = 400,
+                detail = "This user is disabled, please contact the admin to enable it"
+            )
+        
+        # check if the user is expired
+        startDateString = row[self.startDate_ColumnName]
+        endDateString = row[self.endDate_ColumnName]
+
+        daysLeft = self.calculateDaysLeft(startDateString, endDateString)
+
+        if daysLeft <= 0:
+            raise HTTPException(
+                    status_code = 400,
+                    detail = "This user subscription has expired"
+                )
+
+        
 
         isMaxReached = row[self.loginCounter_ColumnName] >= maxLoginPerPeriodParam
 
         if WithGenericResponse:
             return GenericResponse({
+            self.userCode_ColumnName:row[self.userCode_ColumnName],
             self.email_ColumnName:row[self.email_ColumnName],
+            self.name_ColumnName:row[self.name_ColumnName],
             self.phone_ColumnName:row[self.phone_ColumnName],
+            self.startDate_ColumnName:row[self.startDate_ColumnName],
+            self.endDate_ColumnName:row[self.endDate_ColumnName],
             self.lastLoginCode_ColumnName:row[self.lastLoginCode_ColumnName],
             self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
             self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
@@ -491,15 +529,18 @@ class UserTable():
         
         else:
             return {
+                self.userCode_ColumnName:row[self.userCode_ColumnName],
                 self.email_ColumnName:row[self.email_ColumnName],
                 self.phone_ColumnName:row[self.phone_ColumnName],
+                self.startDate_ColumnName:row[self.startDate_ColumnName],
+                self.endDate_ColumnName:row[self.endDate_ColumnName],
                 self.lastLoginCode_ColumnName:row[self.lastLoginCode_ColumnName],
                 self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
                 self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
                 self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
                 self.expiryDate_ColumnName:row[self.expiryDate_ColumnName],
-                 self.isActive_ColumnName:row[self.isActive_ColumnName],
-                 self.isMaximumCodesReached:isMaxReached,
+                self.isActive_ColumnName:row[self.isActive_ColumnName],
+                self.isMaximumCodesReached:isMaxReached,
             }
         
         

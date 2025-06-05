@@ -3,7 +3,9 @@ from pydantic import BaseModel
 
 
 class RegisterModel(BaseModel):
-    userCode:str
+    name:str
+    startDate:str
+    endDate:str
     email:str
     phone:str
 

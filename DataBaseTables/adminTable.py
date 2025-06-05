@@ -156,7 +156,7 @@ class AdminTable():
         return await self.getAdminData(userName=adminModel.adminUserName,password=None,withGenericResponse=True)
         
     async def updateAdmin(self,adminModel:UpdateAdminModel):
-
+        
         verify_query = "SELECT * FROM {} WHERE {} = '{}' and {} = '{}' ".format(
             self.tableName,
 
@@ -214,19 +214,15 @@ class AdminTable():
     
 
         
-    def generateCode(self):
-        # generate 12 charecters and numbers with uppercase letters code
-
-        characters = string.ascii_uppercase + string.digits
-        adminCode = ''.join(random.choice(characters) for _ in range(12))
-        return GenericResponse({"systemCode":adminCode}).to_dict()
+    
         
         
     
 
 
     async def getAllAdminUsers(self,model:GetAdminUsersModel):
-        admin_record = await userTable.UserTable().checkAndReturnAdmin(email=model.email)
+        
+        admin_record =  await self.getAdminData(userName=model.email,password=None)
 
         
         admin_email = admin_record[self.adminUserName_ColumnName]
