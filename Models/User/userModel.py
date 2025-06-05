@@ -12,7 +12,7 @@ class UserModel():
     firstLoginDate:str
     loginCount:str 
     isActive: bool
-    isMaximumCodesReached: bool
+    isMaximumCodesReached: bool 
 
     def __init__(self, userCode: str, userPhone: str,email:str, expiryDate: str, daysLeft: int, lastLoginDate: str, loginCount: str, isActive: bool, firstLoginDate: str, isMaximumCodesReached: bool = False):
 

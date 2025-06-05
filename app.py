@@ -82,6 +82,10 @@ async def requestUserCode(r:LoginModel):
 async def enableDisableUser(r:EnableDisableUserModel):
     return await userTableFunctions.enableDisableUser(r)
 
+@app.post('/resetUser')
+async def resetUser(r:LoginModel):
+    return await userTableFunctions.resetUser(r)
+
 @app.post('/enableDisableAllAdminUsers')
 async def enableDisableAllAdminUsers(r:ResetAllAdminUsersCodesModel):
     return await userTableFunctions.enableDisableAllAdminUsers(r)

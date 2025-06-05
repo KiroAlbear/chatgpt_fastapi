@@ -7,6 +7,8 @@ from Models.User.enableDisableModel import EnableDisableUserModel
 from Models.User.resetAllAdminUsersCodesModel import ResetAllAdminUsersCodesModel
 from Models.User.getAdminUsersModel import GetAdminUsersModel
 from Models.User.adminOrUserModel import AdminOrUserModel
+from Models.User.userModel import UserModel
+
 
 from Models.generic_response import GenericResponse
 from DataBaseTables.adminTable import AdminTable
@@ -31,6 +33,8 @@ class UserTable():
     firstLoginDate_ColumnName = "firstLoginDate"
     expiryDate_ColumnName = "expiryDate"
     isActive_ColumnName = "isActive"
+    isMaximumCodesReached = "isMaximumCodesReached"
+
   
     __usersTable = 0
 
@@ -207,7 +211,30 @@ class UserTable():
 
 
 
+    async def resetUser(self,user:LoginModel):
+        resetUserFirstAndExpiryDateQuery = "UPDATE {} SET {} = 0, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
+        self.tableName,
+
+        self.loginCounter_ColumnName,
+    
         
+        self.lastLoginDate_ColumnName,
+        'NULL',
+
+        self.expiryDate_ColumnName,
+        'NULL',
+
+
+
+        self.userCode_ColumnName,
+        user.userCode,
+
+        self.email_ColumnName,
+        user.email,
+        )
+        await self.__systemDatabase.execute(resetUserFirstAndExpiryDateQuery)
+       
+        return await self.getUserData(userCode=user.userCode,email=user.email, WithGenericResponse=True)
 
     async def requestCodeForUser(self,user:LoginModel):
         admin_record = await self.checkAndReturnAdmin(user.email)
@@ -423,6 +450,9 @@ class UserTable():
         } for row in allUsers]
                 
     async def getUserData(self, userCode:str, email:str, WithGenericResponse = False):
+        admin_record = await self.checkAndReturnAdmin(email)
+        maxLoginPerPeriodParam = admin_record[AdminTable.maxLoginPerPeriod_ColumnName]
+       
 
         query = "SELECT * FROM {} WHERE {} = '{}' and {} = '{}'".format(
         self.tableName,
@@ -440,6 +470,9 @@ class UserTable():
                 status_code = 400,
                 detail = "User not found"
             )
+        
+
+        isMaxReached = row[self.loginCounter_ColumnName] >= maxLoginPerPeriodParam
 
         if WithGenericResponse:
             return GenericResponse({
@@ -450,7 +483,10 @@ class UserTable():
             self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
             self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
             self.expiryDate_ColumnName:row[self.expiryDate_ColumnName],
-             self.isActive_ColumnName:row[self.isActive_ColumnName]
+            self.isActive_ColumnName:row[self.isActive_ColumnName],
+            self.isMaximumCodesReached:isMaxReached,
+           
+
         }).to_dict()
         
         else:
@@ -462,7 +498,8 @@ class UserTable():
                 self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
                 self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
                 self.expiryDate_ColumnName:row[self.expiryDate_ColumnName],
-                 self.isActive_ColumnName:row[self.isActive_ColumnName]
+                 self.isActive_ColumnName:row[self.isActive_ColumnName],
+                 self.isMaximumCodesReached:isMaxReached,
             }
         
         
