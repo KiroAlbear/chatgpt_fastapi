@@ -161,14 +161,9 @@ class UserTable():
 
     async def enableDisableUser(self,model:EnableDisableUserModel):
     
-        query = "UPDATE {} SET {} = {}, {} = {}, {} = {} WHERE {} = '{}' and {} = '{}'".format(
+        query = "UPDATE {} SET {} = {} WHERE {} = '{}' and {} = '{}'".format(
             self.tableName,
 
-            self.loginCounter_ColumnName,
-            0,
-
-            self.expiryDate_ColumnName,
-            'NULL',
 
             self.isActive_ColumnName,
             model.isActive,
