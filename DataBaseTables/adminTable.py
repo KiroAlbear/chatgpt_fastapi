@@ -27,18 +27,19 @@ class AdminTable():
     adminUserName_ColumnName = "adminUserName"
     adminPassword_ColumnName = "adminPassword"
     secretKey_ColumnName = "secretKey"
-    sheetUrl_ColumnName = "sheetUrl"
+   
 
+    startDate_ColumnName = "startDate"
+    endDate_ColumnName = "endDate"
+    daysLeft = "daysLeft"
 
-    sheetStartingRowNumber_ColumnName = "sheetStartingRowNumber"
-    sheetUsersCodesColumnNumber_ColumnName = "sheetUsersCodesColumnNumber"
-    sheetPhoneColumnNumber_ColumnName = "sheetPhoneColumnNumber"
-    sheetDaysLeftColumnNumber_ColumnName = "sheetDaysLeftColumnNumber"
 
 
     maxLoginPerPeriod_ColumnName = "maxLoginPerPeriod"
     resetAFterDays_ColumnName = "resetAFterDays"
     isActive_ColumnName = "isActive"
+
+    datetime_format = "%Y-%m-%d"
 
    
     
@@ -62,12 +63,9 @@ class AdminTable():
         sqlalchemy.Column(self.adminUserName_ColumnName,sqlalchemy.String,primary_key=True),
         sqlalchemy.Column(self.adminPassword_ColumnName, sqlalchemy.String, nullable=True),
         sqlalchemy.Column(self.secretKey_ColumnName, sqlalchemy.String, nullable=True),
-        sqlalchemy.Column(self.sheetUrl_ColumnName, sqlalchemy.String, nullable=True),
-        sqlalchemy.Column(self.sheetStartingRowNumber_ColumnName, sqlalchemy.Integer, nullable=False, default=0),
-        sqlalchemy.Column(self.sheetUsersCodesColumnNumber_ColumnName, sqlalchemy.Integer, nullable=False, default=0 ),
+        sqlalchemy.Column(self.startDate_ColumnName, sqlalchemy.String, nullable=True),
+        sqlalchemy.Column(self.endDate_ColumnName, sqlalchemy.String, nullable=True),
 
-        sqlalchemy.Column(self.sheetPhoneColumnNumber_ColumnName, sqlalchemy.Integer, nullable=False, default=0 ),
-        sqlalchemy.Column(self.sheetDaysLeftColumnNumber_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.maxLoginPerPeriod_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.resetAFterDays_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.isActive_ColumnName, sqlalchemy.Boolean,nullable=False, default=True)
@@ -89,11 +87,8 @@ class AdminTable():
             adminUserName=adminModel.adminUserName,
             adminPassword=adminModel.adminPassword,
             secretKey=adminModel.secretKey,
-            sheetUrl=adminModel.sheetUrl,
-            sheetStartingRowNumber=adminModel.sheetStartingRowNumber,
-            sheetPhoneColumnNumber=adminModel.sheetPhoneColumnNumber,
-            sheetUsersCodesColumnNumber=adminModel.sheetUsersCodesColumnNumber,
-            sheetDaysLeftColumnNumber=adminModel.sheetDaysLeftColumnNumber,
+            startDate=adminModel.startDate,
+            endDate=adminModel.endDate,
             maxLoginPerPeriod=adminModel.maxLoginPerPeriod,
             resetAFterDays=adminModel.resetAFterDays,
             isActive=True
@@ -133,17 +128,8 @@ class AdminTable():
                 detail="Creator password is incorrect"
             )
 
-        verify_query = "SELECT * FROM {} WHERE {} = '{}' ".format(
-            self.tableName,
-            self.adminUserName_ColumnName,
-            adminModel.adminUserName
-        )
-        verify_record = await self.__systemDatabase.fetch_one(verify_query)
-        if not verify_record:
-            raise HTTPException(
-                status_code=400,
-                detail="Admin does not exist"
-            )
+       
+
         query = "UPDATE {} SET {} = {} WHERE {} = '{}'".format(
             self.tableName,
             self.isActive_ColumnName,
@@ -153,52 +139,24 @@ class AdminTable():
             adminModel.adminUserName
         )
         await self.__systemDatabase.execute(query)
-        return await self.getAdminData(userName=adminModel.adminUserName,password=None,withGenericResponse=True)
+        return await self.getAdminData(userName=adminModel.adminUserName,password=None)
         
     async def updateAdmin(self,adminModel:UpdateAdminModel):
-        
-        verify_query = "SELECT * FROM {} WHERE {} = '{}' and {} = '{}' ".format(
-            self.tableName,
 
-            self.adminUserName_ColumnName,
-            adminModel.adminUserName,
+        await self.getAdminData(userName=adminModel.adminUserName,password=adminModel.adminPassword)
 
-            self.adminPassword_ColumnName,
-            adminModel.adminPassword
-        )
-        verify_record = await self.__systemDatabase.fetch_one(verify_query)
-        if not verify_record:
-            raise HTTPException(
-                status_code=400,
-                detail="Admin credentials are incorrect"
-            )
-        query = "UPDATE {} SET  {} = '{}', {} = '{}', {} = '{}', {} = {}, {} = {}, {} = {}, {} = {}, {} = '{}' WHERE {} = '{}' and {} = '{}'".format(
+        query = "UPDATE {} SET  {} = '{}', {} = '{}', {} = '{}' WHERE {} = '{}' and {} = '{}'".format(
             self.tableName,
 
             self.secretKey_ColumnName,
-              adminModel.secretKey,
+            adminModel.secretKey,
 
-            self.sheetUrl_ColumnName,
-              adminModel.sheetUrl,
-
-            self.sheetStartingRowNumber_ColumnName,
-              adminModel.sheetStartingRowNumber,
-
-            self.sheetUsersCodesColumnNumber_ColumnName,
-              adminModel.sheetUsersCodesColumnNumber,
-
-            self.sheetDaysLeftColumnNumber_ColumnName,
-              adminModel.sheetDaysLeftColumnNumber,
 
             self.maxLoginPerPeriod_ColumnName,
-              adminModel.maxLoginPerPeriod,
+            adminModel.maxLoginPerPeriod,
 
             self.resetAFterDays_ColumnName,
-              adminModel.resetAFterDays,
-
-
-            self.sheetPhoneColumnNumber_ColumnName,
-              adminModel.sheetPhoneColumnNumber,
+            adminModel.resetAFterDays,
 
 
             self.adminUserName_ColumnName,
@@ -213,73 +171,48 @@ class AdminTable():
         
     
 
-        
-    
-        
-        
-    
-
-
     async def getAllAdminUsers(self,model:GetAdminUsersModel):
-        
-        admin_record =  await self.getAdminData(userName=model.email,password=None)
+        userTableClass = userTable.UserTable()
+        admin_record =  await self.getAdminData(userName=model.email,password=model.password)
 
         
         admin_email = admin_record[self.adminUserName_ColumnName]
-        sheetStartingRowNumber = admin_record[self.sheetStartingRowNumber_ColumnName]
-        sheetUsersCodesColumnNumber = admin_record[self.sheetUsersCodesColumnNumber_ColumnName] 
-        sheetPHoneColumnNumber = admin_record[self.sheetPhoneColumnNumber_ColumnName]
-        sheetDaysLeft = admin_record[self.sheetDaysLeftColumnNumber_ColumnName] 
-        sheetUrl = admin_record[self.sheetUrl_ColumnName]
-        password = admin_record[self.adminPassword_ColumnName]
+       
+  
         maxLoginPerPeriod = admin_record[self.maxLoginPerPeriod_ColumnName]
 
-        if model.password != password:
+        
+        userData = await userTableClass.getAllUsersForAdmin(email=model.email)
+
+        if userData is None or len(userData) == 0:
             raise HTTPException(
                 status_code=400,
-                detail="Admin incorrect username or password"
+                detail="No users found for this admin"
             )
-
-
-        sheetUserData =  await spreadsheet.scrapeDataFromSpreadSheet(startingRowParam=sheetStartingRowNumber,
-                                                            usersCodeColumnZeroBasedParam=sheetUsersCodesColumnNumber,
-                                                            phoneColumnNumberParam=sheetPHoneColumnNumber,
-                                                            daysColumnZeroBasedParam = sheetDaysLeft,
-                                                            sheetUrlParam=sheetUrl)
-
-        if sheetUserData == []:
-            raise HTTPException(
-                status_code = 400,
-                detail = "No Active users found in the sheet"
-            )
-        
-        userData = await userTable.UserTable().getAllUsersForAdmin(email=model.email)
 
         usersList = []
-        for sheetUser in sheetUserData:
+        for user in userData:
+            startDateString = user[userTableClass.startDate_ColumnName]
+            endDateString = user[userTableClass.endDate_ColumnName]
+            # Calculate the difference in days
+            daysLeft = userTable.UserTable().calculateDaysLeft(startDate=startDateString, endDate=endDateString)
             userModel = UserModel(
-                        userCode=sheetUser[0],
-                        userPhone=sheetUser[1],
-                        daysLeft=sheetUser[2],
+                        userCode=user[userTableClass.userCode_ColumnName],
+                        userPhone=user[userTableClass.phone_ColumnName],
+                        daysLeft=daysLeft,
                         email=admin_email,
-                        expiryDate=None,
-                        lastLoginDate=None,
-                        firstLoginDate=None,
-                        loginCount=None,
-                        isActive=1
+                        expiryDate = user[userTableClass.expiryDate_ColumnName],
+                        startDate = startDateString,
+                        endDate = endDateString,
+                        lastLoginDate = user[userTableClass.lastLoginDate_ColumnName],
+                        firstLoginDate = user[userTableClass.firstLoginDate_ColumnName],
+                        loginCount = user[userTableClass.loginCounter_ColumnName],
+                        isActive = user[userTableClass.isActive_ColumnName],
+                        isMaximumCodesReached = user[userTableClass.loginCounter_ColumnName] >= maxLoginPerPeriod
                         
                       
                     )
             
-            for user in userData:
-                if sheetUser[0] == user[userTable.UserTable.userCode_ColumnName]:
-                    userModel.expiryDate = user[userTable.UserTable.expiryDate_ColumnName]
-                    userModel.lastLoginDate = user[userTable.UserTable.lastLoginDate_ColumnName]
-                    userModel.firstLoginDate = user[userTable.UserTable.firstLoginDate_ColumnName]
-                    userModel.loginCount = user[userTable.UserTable.loginCounter_ColumnName]
-                    userModel.isActive = user[userTable.UserTable.isActive_ColumnName]
-                    userModel.isMaximumCodesReached = user[userTable.UserTable.loginCounter_ColumnName] >= maxLoginPerPeriod
-                    break
             usersList.append(userModel)
 
         return GenericResponse({"usersList":usersList}).to_dict()
@@ -324,35 +257,34 @@ class AdminTable():
                 detail="Admin is disabled"
             )
         
+        startDateString = row[self.startDate_ColumnName]
+        endDateString = row[self.endDate_ColumnName]
 
-        if withGenericResponse:
-            return GenericResponse({
+        # Calculate the difference in days
+        days_left =  userTable.UserTable().calculateDaysLeft(startDate=startDateString, endDate=endDateString) 
+
+        if days_left < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Admin subscription has expired"
+            )
+        
+        adminData = {
             self.adminUserName_ColumnName: row[self.adminUserName_ColumnName],
             self.adminPassword_ColumnName: row[self.adminPassword_ColumnName],
             self.secretKey_ColumnName: row[self.secretKey_ColumnName],
-            self.sheetUrl_ColumnName: row[self.sheetUrl_ColumnName],
-            self.sheetStartingRowNumber_ColumnName: row[self.sheetStartingRowNumber_ColumnName],
-            self.sheetPhoneColumnNumber_ColumnName: row[self.sheetPhoneColumnNumber_ColumnName],
-            self.sheetUsersCodesColumnNumber_ColumnName: row[self.sheetUsersCodesColumnNumber_ColumnName],
-            self.sheetDaysLeftColumnNumber_ColumnName: row[self.sheetDaysLeftColumnNumber_ColumnName],
+            self.startDate_ColumnName: row[self.startDate_ColumnName],
+            self.endDate_ColumnName: row[self.endDate_ColumnName],
+            self.daysLeft: days_left,
             self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
             self.resetAFterDays_ColumnName: row[self.resetAFterDays_ColumnName],
             self.isActive_ColumnName: row[self.isActive_ColumnName] 
-        }).to_dict()
+        }
+
+        if withGenericResponse:
+            return GenericResponse(adminData).to_dict()
         else:
-            return {
-                self.adminUserName_ColumnName: row[self.adminUserName_ColumnName],
-                self.adminPassword_ColumnName: row[self.adminPassword_ColumnName],
-                self.secretKey_ColumnName: row[self.secretKey_ColumnName],
-                self.sheetUrl_ColumnName: row[self.sheetUrl_ColumnName],
-                self.sheetStartingRowNumber_ColumnName: row[self.sheetStartingRowNumber_ColumnName],
-                self.sheetPhoneColumnNumber_ColumnName: row[self.sheetPhoneColumnNumber_ColumnName],
-                self.sheetUsersCodesColumnNumber_ColumnName: row[self.sheetUsersCodesColumnNumber_ColumnName],
-                self.sheetDaysLeftColumnNumber_ColumnName: row[self.sheetDaysLeftColumnNumber_ColumnName],
-                self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
-                self.resetAFterDays_ColumnName: row[self.resetAFterDays_ColumnName],
-                self.isActive_ColumnName: row[self.isActive_ColumnName] 
-            }
+            return adminData
         
     
 
@@ -361,15 +293,14 @@ class AdminTable():
         rows = await self.__systemDatabase.fetch_all(query)
         return GenericResponse({"admins":[
             {
-                self.adminUserName_ColumnName: row[self.adminUserName_ColumnName],
-                self.adminPassword_ColumnName: row[self.adminPassword_ColumnName],
-                self.secretKey_ColumnName: row[self.secretKey_ColumnName],
-                self.sheetUrl_ColumnName: row[self.sheetUrl_ColumnName],
-                self.sheetStartingRowNumber_ColumnName: row[self.sheetStartingRowNumber_ColumnName],
-                self.sheetPhoneColumnNumber_ColumnName: row[self.sheetPhoneColumnNumber_ColumnName],
-                self.sheetUsersCodesColumnNumber_ColumnName: row[self.sheetUsersCodesColumnNumber_ColumnName],
-                self.sheetDaysLeftColumnNumber_ColumnName: row[self.sheetDaysLeftColumnNumber_ColumnName],
-                self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
-                self.resetAFterDays_ColumnName: row[self.resetAFterDays_ColumnName]
-            } for row in rows
+            self.adminUserName_ColumnName: row[self.adminUserName_ColumnName],
+            self.adminPassword_ColumnName: row[self.adminPassword_ColumnName],
+            self.secretKey_ColumnName: row[self.secretKey_ColumnName],
+            self.startDate_ColumnName: row[self.startDate_ColumnName],
+            self.endDate_ColumnName: row[self.endDate_ColumnName],
+            self.daysLeft: userTable.UserTable().calculateDaysLeft(startDate=ow[self.startDate_ColumnName], endDate=row[self.endDate_ColumnName]),
+            self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
+            self.resetAFterDays_ColumnName: row[self.resetAFterDays_ColumnName],
+            self.isActive_ColumnName: row[self.isActive_ColumnName] 
+        } for row in rows
         ]}).to_dict()

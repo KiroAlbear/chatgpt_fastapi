@@ -6,6 +6,8 @@ class UserModel():
     userCode:str
     email:str
     userPhone:str
+    startDate:str
+    endDate:str
     expiryDate:str
     daysLeft:int 
     lastLoginDate:str
@@ -14,7 +16,19 @@ class UserModel():
     isActive: bool
     isMaximumCodesReached: bool 
 
-    def __init__(self, userCode: str, userPhone: str,email:str, expiryDate: str, daysLeft: int, lastLoginDate: str, loginCount: str, isActive: bool, firstLoginDate: str, isMaximumCodesReached: bool = False):
+    def __init__(self, userCode: str,
+                  userPhone: str,
+                  email:str,
+                  expiryDate: str,
+                  startDate: str ,
+                  endDate: str,
+                  daysLeft: int,
+                  lastLoginDate: str,
+                  loginCount: str,
+                  isActive: bool,
+                  firstLoginDate: str,
+                  isMaximumCodesReached: bool = False,
+                ):
 
         self.userCode = userCode
         self.email = email
@@ -26,4 +40,6 @@ class UserModel():
         self.loginCount = loginCount
         self.isActive = isActive
         self.isMaximumCodesReached = isMaximumCodesReached
+        self.startDate = startDate
+        self.endDate = endDate
         

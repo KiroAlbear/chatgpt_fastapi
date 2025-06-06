@@ -6,11 +6,9 @@ class RegisterAdminModel(BaseModel):
     adminUserName:str
     adminPassword:str
     secretKey:str
-    sheetUrl:str
-    sheetStartingRowNumber:int
-    sheetUsersCodesColumnNumber:int
-    sheetPhoneColumnNumber:int
-    sheetDaysLeftColumnNumber:int
+    startDate:str
+    endDate:str
+   
     maxLoginPerPeriod:int
     resetAFterDays:int
 

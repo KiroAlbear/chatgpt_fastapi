@@ -31,6 +31,7 @@ class UserTable():
     phone_ColumnName = "phone"
     startDate_ColumnName = "startDate"
     endDate_ColumnName = "endDate"
+    daysLeft = "daysLeft"
     
     userCode_ColumnName = "userCode"
     loginCounter_ColumnName = "loginCounter"
@@ -181,7 +182,7 @@ class UserTable():
       
     
         await self.__systemDatabase.execute(query)
-        return await self.getUserData(userCode=model.userCode,email=model.email, WithGenericResponse=True)
+        return await self.getUserData(userCode=model.userCode,email=model.email, WithGenericResponse=True,checkIfUserIsActive=False)
         
 
     async def getUserOrAdminData(self, model:AdminOrUserModel):
@@ -241,21 +242,11 @@ class UserTable():
     async def requestCodeForUser(self,user:LoginModel):
         admin_record =  await AdminTable().getAdminData(userName=user.email,password=None)
 
-
-        sheetStartingRowNumber = admin_record[AdminTable.sheetStartingRowNumber_ColumnName]
-        sheetUsersCodesColumnNumber = admin_record[AdminTable.sheetUsersCodesColumnNumber_ColumnName] 
-        sheetDaysLeft = admin_record[AdminTable.sheetDaysLeftColumnNumber_ColumnName] 
         maxLoginPerPeriodParam = admin_record[AdminTable.maxLoginPerPeriod_ColumnName] 
         resetAFterDaysParam = admin_record[AdminTable.resetAFterDays_ColumnName] 
-        phoneColumnNumber = admin_record[AdminTable.sheetPhoneColumnNumber_ColumnName]
-        
-
-        sheetUrl = admin_record[AdminTable.sheetUrl_ColumnName]
+         
         secretKey = admin_record[AdminTable.secretKey_ColumnName]
 
-
-
-        
         currentDate = datetime.now()
         currentDateString = currentDate.strftime(self.datetime_format)
 
@@ -422,10 +413,7 @@ class UserTable():
     #     return userData
         
     def calculateDaysLeft(self, startDate:str, endDate:str):
-        """
-        Calculate the number of days left between startDate and endDate.
-        """
-      
+              
         start_date = datetime.strptime(startDate, self.datetime_format)
         end_date = datetime.strptime(endDate, self.datetime_format)
         
@@ -452,7 +440,7 @@ class UserTable():
             self.email_ColumnName:row[self.email_ColumnName],
             self.name_ColumnName:row[self.name_ColumnName],
             self.phone_ColumnName:row[self.phone_ColumnName],
-            
+            self.daysLeft: self.calculateDaysLeft(row[self.startDate_ColumnName], row[self.endDate_ColumnName]),
             self.startDate_ColumnName:row[self.startDate_ColumnName],
             self.endDate_ColumnName:row[self.endDate_ColumnName],
             self.userCode_ColumnName:row[self.userCode_ColumnName],
@@ -464,7 +452,7 @@ class UserTable():
         
         } for row in allUsers]
                 
-    async def getUserData(self, userCode:str, email:str, WithGenericResponse = False):
+    async def getUserData(self, userCode:str, email:str, WithGenericResponse = False,checkIfUserIsActive = True):
         admin_record =  await AdminTable().getAdminData(userName=email,password=None)
         maxLoginPerPeriodParam = admin_record[AdminTable.maxLoginPerPeriod_ColumnName]
        
@@ -486,11 +474,12 @@ class UserTable():
                 detail = "User not found"
             )
         
-        if (row[self.isActive_ColumnName] == False):
-            raise HTTPException(
-                status_code = 400,
-                detail = "This user is disabled, please contact the admin to enable it"
-            )
+        if checkIfUserIsActive:
+            if (row[self.isActive_ColumnName] == False):
+                raise HTTPException(
+                    status_code = 400,
+                    detail = "This user is disabled, please contact the admin to enable it"
+                )
         
         # check if the user is expired
         startDateString = row[self.startDate_ColumnName]
@@ -508,14 +497,14 @@ class UserTable():
 
         isMaxReached = row[self.loginCounter_ColumnName] >= maxLoginPerPeriodParam
 
-        if WithGenericResponse:
-            return GenericResponse({
+        userResponse = {
             self.userCode_ColumnName:row[self.userCode_ColumnName],
             self.email_ColumnName:row[self.email_ColumnName],
             self.name_ColumnName:row[self.name_ColumnName],
             self.phone_ColumnName:row[self.phone_ColumnName],
             self.startDate_ColumnName:row[self.startDate_ColumnName],
             self.endDate_ColumnName:row[self.endDate_ColumnName],
+            self.daysLeft:daysLeft,
             self.lastLoginCode_ColumnName:row[self.lastLoginCode_ColumnName],
             self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
             self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
@@ -523,25 +512,13 @@ class UserTable():
             self.expiryDate_ColumnName:row[self.expiryDate_ColumnName],
             self.isActive_ColumnName:row[self.isActive_ColumnName],
             self.isMaximumCodesReached:isMaxReached,
-           
+        }
 
-        }).to_dict()
+        if WithGenericResponse:
+            return GenericResponse(userResponse).to_dict()
         
         else:
-            return {
-                self.userCode_ColumnName:row[self.userCode_ColumnName],
-                self.email_ColumnName:row[self.email_ColumnName],
-                self.phone_ColumnName:row[self.phone_ColumnName],
-                self.startDate_ColumnName:row[self.startDate_ColumnName],
-                self.endDate_ColumnName:row[self.endDate_ColumnName],
-                self.lastLoginCode_ColumnName:row[self.lastLoginCode_ColumnName],
-                self.loginCounter_ColumnName:row[self.loginCounter_ColumnName],
-                self.lastLoginDate_ColumnName:row[self.lastLoginDate_ColumnName],
-                self.firstLoginDate_ColumnName:row[self.firstLoginDate_ColumnName],
-                self.expiryDate_ColumnName:row[self.expiryDate_ColumnName],
-                self.isActive_ColumnName:row[self.isActive_ColumnName],
-                self.isMaximumCodesReached:isMaxReached,
-            }
+            return userResponse
         
         
        
