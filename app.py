@@ -11,6 +11,8 @@ from Models.User.adminOrUserModel import AdminOrUserModel
 from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.updateAdminModel import UpdateAdminModel
 from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
+from Models.Admin.getAdminData import GetAdminDataModel
+
 import databases
 import utils.spreadsheet_utils as spreadsheet
 
@@ -65,6 +67,10 @@ async def registerUser(r:RegisterModel):
 @app.post('/getAllAdminUsers')
 async def getAllAdminUsers(r:GetAdminUsersModel):
     return await adminTableFunctions.getAllAdminUsers(r)
+
+@app.post('/getAdminProfileData')
+async def getAdminProfileData(r:GetAdminDataModel):
+    return await adminTableFunctions.getAdminData(r.email, r.password,withGenericResponse= True)
 
 # @app.post('/registerUser')
 # async def addUser(r:RegisterModel):
