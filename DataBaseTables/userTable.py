@@ -11,6 +11,7 @@ from Models.User.resetAllAdminUsersCodesModel import ResetAllAdminUsersCodesMode
 from Models.User.getAdminUsersModel import GetAdminUsersModel
 from Models.User.adminOrUserModel import AdminOrUserModel
 from Models.User.userModel import UserModel
+from Models.User.deleteUserModel import DeleteUserModel
 
 
 from Models.generic_response import GenericResponse
@@ -84,7 +85,7 @@ class UserTable():
         return usersTable
     
 
-    async def generateCode(self):
+    async def generateCode(self,withGenericResponse = False):
         
         # while the code already exists in the database, generate a new code
         # generate 12 charecters and numbers with uppercase letters code
@@ -105,9 +106,31 @@ class UserTable():
             if len(user_verification_record) == 0:
                 break
 
+        if withGenericResponse:
+            return GenericResponse({"generatedCode": generatedCode}).to_dict()
+        else:
+            return generatedCode
+    
+    async def deleteUser(self, model:DeleteUserModel):
+        await AdminTable().getAdminData(userName=model.email,password=model.password)
+        
+        query = "DELETE FROM {} WHERE {} = '{}' and {} = '{}'".format(
+            self.tableName,
 
+            self.userCode_ColumnName,
+            model.userCode,
 
-        return generatedCode
+            self.email_ColumnName,
+            model.email
+        )
+        
+        result = await self.__systemDatabase.execute(query)
+        if result is None:
+            raise HTTPException(
+                status_code = 400,
+                detail = "User not found"
+            )
+        return await AdminTable().getAllAdminUsers(model=GetAdminUsersModel(email=model.email,password=model.password))
     
 
     async def insertNewUser(self,userModel:RegisterModel):
@@ -375,37 +398,6 @@ class UserTable():
                 detail = "User does not exist: {}".format(str(e))
             )
     
-    # async def _handleUserNotExist(self, userCode,email, phoneColumnNumber,startingRowParam, usersCodeColumnZeroBasedParam, daysColumnZeroBasedParam, sheetUrlParam):
-       
-
-    #     userData = None
-
-    #     try:
-    #         userData = await self.getUserData(userCode=userCode,email=email)
-    #     except Exception as e:
-    #         userSheetData = await spreadsheet.scrapeDataFromSpreadSheet(startingRowParam=startingRowParam,
-    #                                                                     usersCodeColumnZeroBasedParam=usersCodeColumnZeroBasedParam,
-    #                                                                     daysColumnZeroBasedParam = daysColumnZeroBasedParam,
-    #                                                                     sheetUrlParam=sheetUrlParam,phoneColumnNumberParam=phoneColumnNumber)
-    #         userSheetItem = [item for item in userSheetData if item[0] == userCode]
-    #         print("sheet user:", userSheetItem)
-
-    #         if userSheetItem == []:
-    #             raise HTTPException(
-    #                 status_code = 400,
-    #                 detail = "This Phone Number is not found in the sheet"
-    #             )
-    #         elif userData == None:
-    #             try:
-    #                 print("User does not exist, inserting new user")
-    #                 userPhone = userSheetItem[0][1]
-    #                 userData = await self.insertNewUser(RegisterModel(userCode = userCode,email= email,phone=userPhone))
-    #             except Exception as e:
-    #                 raise HTTPException(
-    #                     status_code = 400,
-    #                     detail = "Error inserting new user: {}".format(str(e))
-    #                 )
-    #     return userData
         
     def calculateDaysLeft(self, startDate:str, endDate:str):
               

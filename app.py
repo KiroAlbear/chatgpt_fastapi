@@ -7,6 +7,8 @@ from Models.User.enableDisableModel import EnableDisableUserModel
 from Models.User.getAdminUsersModel import GetAdminUsersModel
 from Models.User.resetAllAdminUsersCodesModel import ResetAllAdminUsersCodesModel
 from Models.User.adminOrUserModel import AdminOrUserModel
+from Models.User.deleteUserModel import DeleteUserModel
+
 
 from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.updateAdminModel import UpdateAdminModel
@@ -64,6 +66,10 @@ async def enableDisableAdmin(r:EnableDisableAdminModel):
 async def registerUser(r:RegisterModel):
     return await userTableFunctions.insertNewUser(r)
 
+@app.post('/deleteUser')
+async def deleteUser(r:DeleteUserModel):
+    return await userTableFunctions.deleteUser(r)
+
 @app.post('/getAllAdminUsers')
 async def getAllAdminUsers(r:GetAdminUsersModel):
     return await adminTableFunctions.getAllAdminUsers(r)
@@ -75,6 +81,10 @@ async def getAdminProfileData(r:GetAdminDataModel):
 # @app.post('/registerUser')
 # async def addUser(r:RegisterModel):
 #     return await userTableFunctions.insertNewUser(r)
+
+@app.get('/getCode')
+async def getCode():
+    return await userTableFunctions.generateCode(withGenericResponse=True)
 
 @app.post('/getUserOrAdminData')
 async def getUserOrAdminData(r:AdminOrUserModel):

@@ -184,11 +184,11 @@ class AdminTable():
         
         userData = await userTableClass.getAllUsersForAdmin(email=model.email)
 
-        if userData is None or len(userData) == 0:
-            raise HTTPException(
-                status_code=400,
-                detail="No users found for this admin"
-            )
+        # if userData is None or len(userData) == 0:
+        #     raise HTTPException(
+        #         status_code=400,
+        #         detail="No users found for this admin"
+        #     )
 
         usersList = []
         for user in userData:
@@ -201,6 +201,7 @@ class AdminTable():
                         userPhone=user[userTableClass.phone_ColumnName],
                         daysLeft=daysLeft,
                         email=admin_email,
+                        name=user[userTableClass.name_ColumnName],
                         expiryDate = user[userTableClass.expiryDate_ColumnName],
                         startDate = startDateString,
                         endDate = endDateString,

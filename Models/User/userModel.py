@@ -5,6 +5,7 @@ from pydantic import BaseModel
 class UserModel():
     userCode:str
     email:str
+    name:str
     userPhone:str
     startDate:str
     endDate:str
@@ -19,6 +20,7 @@ class UserModel():
     def __init__(self, userCode: str,
                   userPhone: str,
                   email:str,
+                  name: str,
                   expiryDate: str,
                   startDate: str ,
                   endDate: str,
@@ -32,6 +34,7 @@ class UserModel():
 
         self.userCode = userCode
         self.email = email
+        self.name = name
         self.userPhone = userPhone
         self.expiryDate = expiryDate
         self.daysLeft = daysLeft
