@@ -10,14 +10,13 @@ from Models.User.adminOrUserModel import AdminOrUserModel
 from Models.User.deleteUserModel import DeleteUserModel
 
 
+
 from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.updateAdminModel import UpdateAdminModel
 from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
 from Models.Admin.getAdminData import GetAdminDataModel
-
+from Models.Admin.registerAdminUserModel import RegisterAdminUserModel
 import databases
-import utils.spreadsheet_utils as spreadsheet
-
 
 
 USERS_DATABASE_URL = "sqlite:///./users.db"
@@ -50,9 +49,18 @@ async def shutdown():
 #     allUsers = await usersDatabase.fetch_all(query)
 #     return allUsers
 
-@app.post('/registerAdmin')
+@app.post('/insertAdmin')
 async def addAdmin(r:RegisterAdminModel):
     return await adminTableFunctions.insertNewAdmin(r)
+
+
+@app.get('/deleteAdmin')
+async def deleteAdmin(email: str, creatorPassword: str):
+    return await adminTableFunctions.deleteAdmin(email, creatorPassword)
+
+@app.post('/addNewAdmin')
+async def addNewAdmin(r:RegisterAdminUserModel):
+    return await adminTableFunctions.addNewAdmin(r)
 
 @app.post('/updateAdmin')
 async def UpdateAdmin(r:UpdateAdminModel):
@@ -106,9 +114,10 @@ async def resetUser(r:LoginModel):
 async def enableDisableAllAdminUsers(r:ResetAllAdminUsersCodesModel):
     return await userTableFunctions.enableDisableAllAdminUsers(r)
 
-@app.post('/getSpreadSheetData')
-async def getSpreadSheetData():
-    return await spreadsheet.scrapeDataFromSpreadSheet()
+# @app.post('/getSpreadSheetData')
+# async def getSpreadSheetData():
+#     return await spreadsheet.scrapeDataFromSpreadSheet()
+
 
 ## Provider APIS
 ######################################################################################

@@ -1,11 +1,10 @@
 from fastapi import HTTPException
 import databases
 import sqlalchemy
-import random
-import string
 from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.updateAdminModel import UpdateAdminModel
 from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
+from Models.Admin.registerAdminUserModel import RegisterAdminUserModel
 from Models.generic_response import GenericResponse
 from Models.User.userModel import UserModel
 import DataBaseTables.userTable as userTable
@@ -14,7 +13,7 @@ from Models.User.getAdminUsersModel import GetAdminUsersModel
 
 from datetime import datetime, timedelta
 import authenticator as authenticator
-import utils.spreadsheet_utils as spreadsheet
+
 
 
 class AdminTable():
@@ -38,12 +37,10 @@ class AdminTable():
     maxLoginPerPeriod_ColumnName = "maxLoginPerPeriod"
     resetAFterDays_ColumnName = "resetAFterDays"
     isActive_ColumnName = "isActive"
+    isFreeTrial_ColumnName = "isFreeTrial"
 
     datetime_format = "%Y-%m-%d"
 
-   
-    
-  
     __adminTable = 0
 
     def createAndReturnAdminTable(self):
@@ -68,12 +65,62 @@ class AdminTable():
 
         sqlalchemy.Column(self.maxLoginPerPeriod_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
         sqlalchemy.Column(self.resetAFterDays_ColumnName,sqlalchemy.Integer, nullable=False, default=0),
-        sqlalchemy.Column(self.isActive_ColumnName, sqlalchemy.Boolean,nullable=False, default=True)
+        sqlalchemy.Column(self.isActive_ColumnName, sqlalchemy.Boolean,nullable=False, default=True),
+        sqlalchemy.Column(self.isFreeTrial_ColumnName, sqlalchemy.Boolean,nullable=False, default=True),
        
         )
         
         return adminTable
     
+
+    async def addNewAdmin(self,adminModel:RegisterAdminUserModel):
+        start_date = datetime.now()
+        end_date = start_date + timedelta(days=2)
+
+        start_date_str = start_date.strftime(self.datetime_format)
+        end_date_str = end_date.strftime(self.datetime_format)
+
+        query = self.__adminTable.insert().values(
+            adminUserName=adminModel.adminUserName.strip(),
+            adminPassword=adminModel.adminPassword.strip(),
+            secretKey=adminModel.secretKey.strip(),
+            startDate=start_date_str,
+            endDate=end_date_str,
+            maxLoginPerPeriod=adminModel.maxLoginPerPeriod,
+            resetAFterDays=adminModel.resetAFterDays,
+            isActive=True,
+            isFreeTrial=True
+           
+    
+    )
+        ###################################################################################################
+        # Check if the adminUserName already exists with user name or secret key
+        adminUserName_verification_query = "SELECT * FROM {} WHERE {}= '{}' OR {}= '{}'".format(
+           self.tableName,
+
+           self.adminUserName_ColumnName,
+           adminModel.adminUserName,
+
+           self.secretKey_ColumnName,
+           adminModel.secretKey,
+        )
+        adminUserName_verification_record = await self.__systemDatabase.fetch_all(adminUserName_verification_query)
+
+        ###################################################################################################
+
+        
+     
+        if(len(adminUserName_verification_record) > 0):
+            raise HTTPException(
+             status_code = 400,
+             detail = "This Admin already exists"
+            )
+
+        
+        else:
+           await self.__systemDatabase.execute(query)
+           return await self.getAdminData(userName=adminModel.adminUserName,password=adminModel.adminPassword ,withGenericResponse=True)
+
 
     async def insertNewAdmin(self,adminModel:RegisterAdminModel):
 
@@ -84,24 +131,28 @@ class AdminTable():
             )
 
         query = self.__adminTable.insert().values(
-            adminUserName=adminModel.adminUserName,
-            adminPassword=adminModel.adminPassword,
-            secretKey=adminModel.secretKey,
+            adminUserName=adminModel.adminUserName.strip(),
+            adminPassword=adminModel.adminPassword.strip(),
+            secretKey=adminModel.secretKey.strip(),
             startDate=adminModel.startDate,
             endDate=adminModel.endDate,
             maxLoginPerPeriod=adminModel.maxLoginPerPeriod,
             resetAFterDays=adminModel.resetAFterDays,
-            isActive=True
+            isActive=True,
+            isFreeTrial=False
            
     
     )
         ###################################################################################################
 
-        adminUserName_verification_query = "SELECT * FROM {} WHERE {}= '{}'".format(
+        adminUserName_verification_query = "SELECT * FROM {} WHERE {}= '{}' OR {}= '{}'".format(
            self.tableName,
 
            self.adminUserName_ColumnName,
            adminModel.adminUserName,
+
+           self.secretKey_ColumnName,
+           adminModel.secretKey,
         )
         adminUserName_verification_record = await self.__systemDatabase.fetch_all(adminUserName_verification_query)
 
@@ -120,6 +171,26 @@ class AdminTable():
            await self.__systemDatabase.execute(query)
            return await self.getAdminData(userName=adminModel.adminUserName,password=adminModel.adminPassword ,withGenericResponse=True)
         
+    async def deleteAdmin(self,email:str,creatorPassword:str):
+        if(creatorPassword != self.creatorPassword):
+            raise HTTPException(
+                status_code=400,
+                detail="Creator password is incorrect"
+            )
+
+        query = "DELETE FROM {} WHERE {} = '{}'".format(
+            self.tableName,
+            
+            self.adminUserName_ColumnName,
+
+            email.strip(),
+           
+        )
+        await userTable.UserTable().deleteAllUsersOfAdmin(email=email)
+        await self.__systemDatabase.execute(query)
+        return GenericResponse({"message": "Admin deleted successfully"}).to_dict()
+    
+
     async def enableDisableAdmin(self,adminModel:EnableDisableAdminModel):
 
         if(adminModel.creatorPassword != self.creatorPassword):
@@ -149,7 +220,7 @@ class AdminTable():
             self.tableName,
 
             self.secretKey_ColumnName,
-            adminModel.secretKey,
+            adminModel.secretKey.strip(),
 
 
             self.maxLoginPerPeriod_ColumnName,
@@ -160,10 +231,10 @@ class AdminTable():
 
 
             self.adminUserName_ColumnName,
-            adminModel.adminUserName,
+            adminModel.adminUserName.strip(),
 
             self.adminPassword_ColumnName,
-            adminModel.adminPassword
+            adminModel.adminPassword.strip()
         )
         await self.__systemDatabase.execute(query)
         return await self.getAdminData(userName=adminModel.adminUserName,password=adminModel.adminPassword, withGenericResponse=True)
@@ -279,7 +350,8 @@ class AdminTable():
             self.daysLeft: days_left,
             self.maxLoginPerPeriod_ColumnName: row[self.maxLoginPerPeriod_ColumnName],
             self.resetAFterDays_ColumnName: row[self.resetAFterDays_ColumnName],
-            self.isActive_ColumnName: row[self.isActive_ColumnName] 
+            self.isActive_ColumnName: row[self.isActive_ColumnName],
+            self.isFreeTrial_ColumnName: row[self.isFreeTrial_ColumnName]
         }
 
         if withGenericResponse:
