@@ -132,9 +132,35 @@ class UserTable():
             )
         return await AdminTable().getAllAdminUsers(model=GetAdminUsersModel(email=model.email,password=model.password))
     
+    async def deleteAllUsersOfAdmin(self, email:str):
+       
+        query = "DELETE FROM {} WHERE {} = '{}'".format(
+            self.tableName,
+
+            self.email_ColumnName,
+            email
+        )
+        
+        await self.__systemDatabase.execute(query)
 
     async def insertNewUser(self,userModel:RegisterModel):
-        await AdminTable().getAdminData(userName=userModel.email,password=None)
+        admin_data = await AdminTable().getAdminData(userName=userModel.email,password=None)
+
+        user_verification_query = "SELECT * FROM {} WHERE {} = '{}' ".format(
+            self.tableName,
+
+            self.email_ColumnName,
+            userModel.email,
+
+        )
+        user_verification_record = await self.__systemDatabase.fetch_all(user_verification_query)
+
+        if admin_data[AdminTable.isFreeTrial_ColumnName] == True and len(user_verification_record) >= 1:
+            raise HTTPException(
+                status_code = 400,
+                detail = "This account is in free trial, it is allowed to register only one user, please contact us to register more users"
+            )
+
         generatedCode = await self.generateCode()
         
         query = self.__usersTable.insert().values(
@@ -227,7 +253,7 @@ class UserTable():
             print("User not found")
             raise HTTPException(
                 status_code = 400,
-                detail = "Invalid credentials, please try again"
+                detail = "Wrong email or password, please try again"
             )
           
     

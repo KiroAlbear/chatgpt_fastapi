@@ -10,14 +10,14 @@ from Models.User.adminOrUserModel import AdminOrUserModel
 from Models.User.deleteUserModel import DeleteUserModel
 
 
-from Models.Admin.registerAdminModel import RegisterAdminModel
+
+from Models.Admin.updateAdminModelSuperAdmin import UpdateAdminModelSuperAdmin
 from Models.Admin.updateAdminModel import UpdateAdminModel
 from Models.Admin.enableDisableAdminModel import EnableDisableAdminModel
 from Models.Admin.getAdminData import GetAdminDataModel
-
+from Models.Admin.registerAdminModel import RegisterAdminModel
+from Models.Admin.registerAdminModelSuperAdmin import RegisterAdminModelSuperAdmin
 import databases
-import utils.spreadsheet_utils as spreadsheet
-
 
 
 USERS_DATABASE_URL = "sqlite:///./users.db"
@@ -50,9 +50,23 @@ async def shutdown():
 #     allUsers = await usersDatabase.fetch_all(query)
 #     return allUsers
 
-@app.post('/registerAdmin')
-async def addAdmin(r:RegisterAdminModel):
-    return await adminTableFunctions.insertNewAdmin(r)
+@app.post('/addNewAdminSuperAdmin')
+async def addNewAdminSuperAdmin(r:RegisterAdminModelSuperAdmin):
+    return await adminTableFunctions.addNewAdminSuperAdmin(r)
+
+@app.post('/addNewAdmin')
+async def addNewAdmin(r:RegisterAdminModel):
+    return await adminTableFunctions.addNewAdmin(r)
+
+
+@app.get('/deleteAdminSuperAdmin')
+async def deleteAdmin(email: str, superAdminPassword: str):
+    return await adminTableFunctions.deleteAdminSuperAdmin(email, superAdminPassword)
+
+@app.post('/updateAdminSuperAdmin')
+async def UpdateAdmin(r:UpdateAdminModelSuperAdmin):
+    return await adminTableFunctions.updateAdminSuperAdmin(r)
+
 
 @app.post('/updateAdmin')
 async def UpdateAdmin(r:UpdateAdminModel):
@@ -106,9 +120,10 @@ async def resetUser(r:LoginModel):
 async def enableDisableAllAdminUsers(r:ResetAllAdminUsersCodesModel):
     return await userTableFunctions.enableDisableAllAdminUsers(r)
 
-@app.post('/getSpreadSheetData')
-async def getSpreadSheetData():
-    return await spreadsheet.scrapeDataFromSpreadSheet()
+# @app.post('/getSpreadSheetData')
+# async def getSpreadSheetData():
+#     return await spreadsheet.scrapeDataFromSpreadSheet()
+
 
 ## Provider APIS
 ######################################################################################
