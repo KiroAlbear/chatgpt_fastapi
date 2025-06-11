@@ -1,4 +1,5 @@
 from fastapi import  FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from DataBaseTables.userTable import UserTable
 from DataBaseTables.adminTable import AdminTable
 from Models.User.loginModel import LoginModel
@@ -31,6 +32,21 @@ adminTableFunctions.createAndReturnAdminTable()
 
 
 app = FastAPI()
+
+origins = [
+    "https://authinticator-code-sharing.onrender.com",
+    "https://authinticator-code-sharing.onrender.com:5000",
+    "https://authinticator-code-sharing.onrender.com:8000",
+
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
