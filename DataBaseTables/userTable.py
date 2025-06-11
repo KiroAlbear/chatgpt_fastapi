@@ -18,9 +18,6 @@ from Models.generic_response import GenericResponse
 from DataBaseTables.adminTable import AdminTable
 from datetime import datetime, timedelta
 import authenticator as authenticator
-import utils.spreadsheet_utils as spreadsheet
-
-
 
 class UserTable():
     __DATABASE_URL = "sqlite:///./users.db"
