@@ -305,6 +305,13 @@ class UserTable():
                 status_code = 400,
                 detail = "Error generating code: {}".format(str(e))
             )
+
+
+        if code == 'None':
+            raise HTTPException(
+                status_code = 400,
+                detail = "Error generating code, please try again"
+            )
         
         
         
