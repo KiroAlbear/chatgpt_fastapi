@@ -20,6 +20,10 @@ from Models.Admin.registerAdminModel import RegisterAdminModel
 from Models.Admin.registerAdminModelSuperAdmin import RegisterAdminModelSuperAdmin
 import databases
 
+import os
+
+is_dev = os.getenv("ENV") == "dev"
+
 
 USERS_DATABASE_URL = "sqlite:///./users.db"
 usersDatabase = databases.Database(USERS_DATABASE_URL)
@@ -31,7 +35,10 @@ adminTableFunctions = AdminTable()
 adminTableFunctions.createAndReturnAdminTable()
 
 
-app = FastAPI()
+app = FastAPI(
+    docs_url="/docs" if is_dev else None,
+    redoc_url="/redoc" if is_dev else None,
+    openapi_url="/openapi.json" if is_dev else None)
 
 origins = [
     "https://authinticator-code-sharing.onrender.com",

@@ -13,6 +13,10 @@
                 "app:app",
                 "--reload"
             ],
+             "env": {
+        "ENV": "dev"
+      },
+            
             "jinja": true
         }
     ]
