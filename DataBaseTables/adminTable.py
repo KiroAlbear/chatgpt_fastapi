@@ -297,7 +297,7 @@ class AdminTable():
             await self.__systemDatabase.execute(endDateQuery)
             
 
-        if adminModel.maxLoginPerPeriod != None:
+        if adminModel.maxLoginPerPeriod != 0:
 
             maxLoginPerPeriodQuery = "UPDATE {} SET  {} = '{}' WHERE {} = '{}'".format(
             self.tableName,
@@ -310,7 +310,7 @@ class AdminTable():
         )
             await self.__systemDatabase.execute(maxLoginPerPeriodQuery)
             
-        if adminModel.resetAFterDays != None:
+        if adminModel.resetAFterDays != 0:
             resetAFterDaysQuery = "UPDATE {} SET  {} = '{}' WHERE {} = '{}'".format(
             self.tableName,
 
