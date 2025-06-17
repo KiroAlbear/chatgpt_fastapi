@@ -38,6 +38,10 @@ origins = [
     "https://authinticator-code-sharing.onrender.com:5000",
     "https://authinticator-code-sharing.onrender.com:8000",
 
+    "https://keybridge.pro",
+    "https://keybridge.pro:5000",
+    "https://keybridge.pro:8000",
+
 ]
 
 app.add_middleware(
