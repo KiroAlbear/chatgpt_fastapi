@@ -14,11 +14,11 @@ from Models.User.getAdminUsersModel import GetAdminUsersModel
 
 from datetime import datetime, timedelta
 import authenticator as authenticator
-
+from constants import Constants
 
 
 class AdminTable():
-    __DATABASE_URL = "sqlite:///keybridge_database/users.db"
+    __DATABASE_URL =  Constants.USERS_DATABASE_URL
     __systemDatabase = databases.Database(__DATABASE_URL)
     __metaData = sqlalchemy.MetaData()
     tableName = "admin"

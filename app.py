@@ -22,10 +22,12 @@ import databases
 
 import os
 
+from constants import Constants
+
 is_dev = os.getenv("ENV") == "dev"
 
 
-USERS_DATABASE_URL = "sqlite:///./users.db"
+USERS_DATABASE_URL = Constants.USERS_DATABASE_URL
 usersDatabase = databases.Database(USERS_DATABASE_URL)
 
 userTableFunctions =  UserTable()
