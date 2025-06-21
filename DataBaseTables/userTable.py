@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 import authenticator as authenticator
 
 class UserTable():
-    __DATABASE_URL = "sqlite:///./users.db"
+    __DATABASE_URL = "sqlite:///keybridge_database/users.db"
     __systemDatabase = databases.Database(__DATABASE_URL)
     __metaData = sqlalchemy.MetaData()
     tableName = "users"
@@ -295,6 +295,7 @@ class UserTable():
         resetAFterDays = resetAFterDaysParam ########### Change this value to set the number of days after which the login counter resets
 
         resetAfterDateString = (currentDate + timedelta(days=resetAFterDays)).strftime(self.datetime_format)
+        
         
         code = None
         try:

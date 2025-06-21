@@ -18,7 +18,7 @@ import authenticator as authenticator
 
 
 class AdminTable():
-    __DATABASE_URL = "sqlite:///./users.db"
+    __DATABASE_URL = "sqlite:///keybridge_database/users.db"
     __systemDatabase = databases.Database(__DATABASE_URL)
     __metaData = sqlalchemy.MetaData()
     tableName = "admin"
